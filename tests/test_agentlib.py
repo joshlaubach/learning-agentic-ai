@@ -101,3 +101,45 @@ def test_is_rate_limit_error_detects_429_status_code():
 
     assert llm_client._is_rate_limit_error(FakeError()) is True
     assert llm_client._is_rate_limit_error(ValueError("unrelated")) is False
+
+
+# --- agentlib.tracing ---
+
+from agentlib.tracing import Tracer
+
+
+def test_tracer_span_context_manager_measures_real_time():
+    tracer = Tracer()
+    with tracer.span("Jack", role="planner"):
+        pass
+    assert len(tracer.spans) == 1
+    assert tracer.spans[0].name == "Jack"
+    assert tracer.spans[0].metadata == {"role": "planner"}
+    assert tracer.spans[0].duration_ms >= 0
+
+
+def test_tracer_record_uses_simulated_duration_not_real_time():
+    tracer = Tracer()
+    tracer.record("Bob", duration_ms=450.0, role="worker")
+    assert tracer.spans[0].duration_ms == 450.0
+
+
+def test_tracer_summary_and_slowest():
+    tracer = Tracer()
+    tracer.record("Jack", duration_ms=100.0)
+    tracer.record("Bob", duration_ms=500.0)
+    tracer.record("Mike", duration_ms=200.0)
+
+    assert tracer.slowest().name == "Bob"
+    assert tracer.total_ms() == 800.0
+    summary = tracer.summary()
+    assert [s["name"] for s in summary] == ["Jack", "Bob", "Mike"]
+    assert summary[1]["duration_ms"] == 500.0
+
+
+def test_tracer_reset_clears_spans():
+    tracer = Tracer()
+    tracer.record("Jack", duration_ms=100.0)
+    tracer.reset()
+    assert tracer.spans == []
+    assert tracer.slowest() is None

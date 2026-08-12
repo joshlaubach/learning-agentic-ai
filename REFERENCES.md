@@ -40,7 +40,32 @@ instead.
 
 ## Chapter 2 — Agent Control Flow
 
-*(Populated in Unit 3 — LangGraph, OpenClaw, subagent-pattern sourcing.)*
+- LangChain, Inc. "Graph API overview." *Docs by LangChain.*
+  https://docs.langchain.com/oss/python/langgraph/graph-api — live documentation, no
+  canonical paper; cited for the nodes/edges/conditional-edges model this chapter's bridge
+  section sketches. Verified live at build time.
+- OpenClaw. Official documentation. https://docs.openclaw.ai/ — cited for the project's
+  documented three-layer architecture (channel, brain, body) and seven-stage agentic loop
+  (normalize, route, assemble context, infer, ReAct, load skills, persist memory), both
+  confirmed via the live docs and multiple independent third-party architecture write-ups at
+  build time. The spec that produced this course flagged that the project "has been renamed
+  twice" — as of this verification, the current, live name and URL are OpenClaw /
+  `docs.openclaw.ai`; re-check before treating either as current if reading this much later.
+- Schmid, P. (2026, May 5). "How Agents Manage Other Agents: Four Subagents Patterns in
+  2026." *philschmid.de.* https://www.philschmid.de/subagent-patterns-2026 — source for the
+  four subagent management patterns (inline tool-call spawn, fan-out, persistent agent
+  pools, peer-to-peer teams) and the framing of supervisor-worker as the current production
+  default. Title and URL verified live at build time; this is an actively updated personal
+  blog, not a static/peer-reviewed reference, so both may have moved by the time this is
+  read.
+- The claim that supervisor-worker is the "current production default," and that skills and
+  subagents are typically composed together in production systems, reflects **practitioner
+  consensus from multiple 2026 industry sources** (including the Schmid piece above and
+  OpenClaw's own shipped skills layer as a concrete example) rather than one canonical or
+  peer-reviewed reference — noted here explicitly rather than presented as an academic fact.
+
+(ReAct, cited in Chapter 1's section above, is also the pattern underlying each subagent's
+internal loop in this chapter's build section — not re-cited here.)
 
 ## Chapter 3 — RAG and Retrieval Evaluation
 

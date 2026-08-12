@@ -19,7 +19,7 @@ and do not do more than one unit per session even with budget left over.
       `solutions/ch01_fundamentals_answers.md`. Builds `agentlib/llm_client.py` for real
       (the one exception to "build inline first" — every later real-API chapter needs it
       immediately).
-- [ ] **Unit 3 — Chapter 2: Agent Control Flow.** Notebook + solutions file. Loop guards and
+- [x] **Unit 3 — Chapter 2: Agent Control Flow.** Notebook + solutions file. Loop guards and
       tools stay inline per the design rationale, but `agentlib/tracing.py` gets built here,
       and `agentlib/llm_client.py` gets its first reuse.
 - [ ] **Unit 4 — Chapter 3: RAG and Retrieval Evaluation.** Notebook + solutions file.
@@ -126,7 +126,51 @@ and do not do more than one unit per session even with budget left over.
 - `REFERENCES.md`'s Chapter 1 section is now filled in (ReAct citation, plus a note on the
   Sonnet 5 pricing correction above).
 
-**Next unit:** Unit 3 — Chapter 2 notebook (`curriculum/02_control_flow.ipynb`) and
-`solutions/ch02_control_flow_answers.md`. Builds `agentlib/tracing.py`; loop guards and tools
-stay inline per the design rationale, reusing `agentlib/llm_client.py` from Unit 2 for the
-first time.
+## Notes from Unit 3
+
+- **`agentlib/tracing.py` built for real.** A `Tracer`/`Span` pair with two ways to log a
+  hop: `tracer.span(name, **meta)` as a context manager (measures real wall-clock time) and
+  `tracer.record(name, duration_ms, **meta)` (logs an explicit, possibly-simulated duration
+  without actually sleeping) — the notebook uses `record()` throughout so the multi-agent
+  demo stays fast in CI while still teaching realistic per-hop latency numbers.
+- **`agentlib/llm_client.py` reused for the first time**, exactly as planned — Jack's
+  planner, Bob's subagent calls, and Mike's critic each get a real-vs-mock toggle via
+  `HAS_KEY`, same pattern as Chapter 1.
+- **Dropped `tiktoken` from this chapter's leaky-subagent demo.** `tiktoken.get_encoding()`
+  downloads its BPE vocab file from `openaipublic.blob.core.windows.net` on first use, and
+  this build session's sandboxed egress policy blocks that host outright (confirmed via the
+  proxy's own diagnostics — a permanent policy block, not a transient network error, so not
+  something to retry around). Beyond just blocking verification in this specific
+  environment, requiring a live external download inside a notebook that must "execute with
+  zero errors" under Hard Constraint #3 is fragile on its own merits regardless of network
+  policy. Chapter 2's break-it #4 (leaky subagent) now measures a dependency-free word-count
+  proxy instead of exact token counts, explicitly labeled as an approximation, with a note
+  that Chapter 5 is where the spec calls for real tiktoken-based tokenization to be
+  introduced properly. **Unit 6 (Chapter 5) will need to solve this network-robustness
+  problem for real** (likely a try/except fallback from real tiktoken to an approximate
+  counter, so the notebook stays robust to network variability in any environment) — flagged
+  here so that session doesn't hit the same wall unprepared.
+- **Caught and fixed a spec-compliance bug before finishing:** the cold-diagnosis exercise
+  in the interview-prep section originally included inline "Answer: ..." reveals directly in
+  the notebook markdown, violating the hard constraint that no notebook may contain an
+  inline model answer. Fixed by moving all four diagnoses into
+  `solutions/ch02_control_flow_answers.md` and leaving only the bare symptom prompts in the
+  notebook, with a pointer to the solutions file. Re-verified Chapter 1 doesn't have the same
+  issue (it doesn't — its cold-answer questions were pointer-only from the start).
+- **Verification:** `pytest --nbmake` across all 12 notebooks + `tests/` with no `.env`
+  present — 28/28 pass. The notebook was executed in place afterward
+  (`jupyter nbconvert --execute --inplace`) so its committed version shows real example
+  output — including, notably, the hash-based cycle guard visibly failing to catch the
+  Jack/Mike cycle (running the full 8 rounds) right next to the semantic guard catching it
+  in 2, which is the clearest before/after in the chapter.
+- `REFERENCES.md`'s Chapter 2 section is now filled in (LangGraph docs, OpenClaw docs,
+  Schmid's subagent-patterns article, and a labeled practitioner-consensus note for the
+  supervisor-worker/skills claims that aren't from one canonical source).
+
+**Next unit:** Unit 4 — Chapter 3 notebook (`curriculum/03_rag_evaluation.ipynb`) and
+`solutions/ch03_rag_evaluation_answers.md`. Builds `agentlib/synthetic_data.py` and
+`agentlib/eval_metrics.py`; pulls and caches SQuAD 1.1 and SEC EDGAR filings; fills in the
+Datasets + Chapter 3 sections of `REFERENCES.md`. Given Unit 3's tiktoken finding, double-check
+early whether any of Chapter 3's planned network calls (Hugging Face `datasets`, SEC EDGAR's
+`data.sec.gov`) are reachable from the build environment before writing code that depends on
+them, and design a graceful fallback if not.
