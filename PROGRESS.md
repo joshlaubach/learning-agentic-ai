@@ -26,7 +26,7 @@ and do not do more than one unit per session even with budget left over.
       Builds `agentlib/synthetic_data.py` and `agentlib/eval_metrics.py`. Pulls and caches
       SQuAD 1.1 and a real messy-document source; fills in the Datasets + Chapter 3 sections
       of `REFERENCES.md`.
-- [ ] **Unit 5 — Chapter 4: Production Reliability.** Notebook + solutions file.
+- [x] **Unit 5 — Chapter 4: Production Reliability.** Notebook + solutions file.
 - [ ] **Unit 6 — Chapter 5: Cost, Performance, and Model Selection.** Notebook + solutions
       file.
 - [ ] **Unit 7 — Chapter 6: Security and Safeguards.** Notebook + solutions file.
@@ -253,5 +253,44 @@ found per source:**
   (SQuAD, RAG, TF-IDF, embeddings, FAISS, RAGAS, the IR-metrics textbook, spaCy, PubMedQA,
   BEIR) verified via live search at build time.
 
-**Next unit:** Unit 5 — Chapter 4 notebook (`curriculum/04_production_reliability.ipynb`) and
-`solutions/ch04_production_reliability_answers.md`.
+## Notes from Unit 5
+
+- **No new `agentlib` module** — per the repo structure spec, `agentlib/` has exactly six
+  files (`tools.py`, `loop_guards.py`, `tracing.py`, `synthetic_data.py`, `eval_metrics.py`,
+  `llm_client.py`), and none of them is a reliability/caching module, so this chapter's
+  `TTLCache`, `retry_with_backoff()`, and `CircuitBreaker` are built inline in the notebook
+  by design, not extracted — consistent with the spec's exact file inventory rather than an
+  oversight.
+- **Hit the same nested-quoting bug class as Chapters 1-3, in a new shape:** the fake
+  mini-codebase's file contents needed realistic Python docstrings (using `"""`), nested
+  inside Python string literals (using `'''`), nested inside this build's own generator
+  script's string wrapper (also `"""`, three levels deep) — the innermost `"""` prematurely
+  closed the outermost one. Fixed by writing that one cell's source to a plain, unwrapped
+  `.py` file and reading it back as text rather than embedding it as a nested string literal
+  — avoids the whole class of bug rather than patching this one instance. Worth remembering
+  for any future chapter whose example content itself contains Python code with docstrings.
+- **Real rate-limit section falls back cleanly** (verified in this no-key build): reuses the
+  exact same `retry_with_backoff()` built earlier in the chapter against a simulated flaky
+  tool when `HAS_KEY` is False, rather than a separate/simplified mock path — the real-key
+  branch (untested here, no key present) fires a 20-way concurrent burst via
+  `agentlib.llm_client.call_model()` and applies the same decorator against genuine 429s.
+- **Verification:** `pytest --nbmake` across all 12 notebooks + `tests/` with no `.env`
+  present — 36/36 pass (no new agentlib tests needed this unit, per the point above).
+  Notebook executed in place; break-it #1's before/after is the clearest in the chapter (same
+  question, wrong answer with no explanation vs. correct answer with a visible context-age
+  log), and break-it #3's circuit breaker demo shows a nice true-to-life detail: it
+  auto-retries once per cooldown window and correctly reopens when that trial still fails,
+  not just a scripted open-then-closed sequence.
+- `REFERENCES.md`'s Chapter 4 section is filled in (Nygard's *Release It!* for circuit
+  breakers, Brooker's *Exponential Backoff and Jitter* for the retry jitter component), both
+  verified via live search.
+
+**Next unit:** Unit 6 — Chapter 5 notebook
+(`curriculum/05_cost_performance_model_selection.ipynb`) and
+`solutions/ch05_cost_performance_model_selection_answers.md`. Per Unit 3's and Unit 4's
+notes, this is where real `tiktoken` tokenization is supposed to be introduced — the
+`openaipublic.blob.core.windows.net` host `tiktoken.get_encoding()` needs is blocked the same
+way `huggingface.co` and `sec.gov` are in this build environment, so that session should
+check reachability early and design a robust fallback (a try/except to an approximate
+counter, clearly labeled, following the same pattern already established for other
+network-dependent pieces) rather than assume it will work.

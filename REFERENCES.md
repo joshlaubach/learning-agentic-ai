@@ -137,7 +137,16 @@ internal loop in this chapter's build section — not re-cited here.)
 
 ## Chapter 4 — Production Reliability
 
-*(Populated in Unit 5 — circuit breaker pattern, exponential backoff and jitter.)*
+- Nygard, M. T. (2007). *Release It!: Design and Deploy Production-Ready Software.*
+  Pragmatic Bookshelf. (2nd ed., 2018.) The book that popularized the circuit breaker
+  pattern (among other stability patterns) as a defense against cascading failure — this
+  chapter's `CircuitBreaker` implementation follows the closed/open/half-open state model
+  described there.
+- Brooker, M. (2015). "Exponential Backoff and Jitter." *AWS Architecture Blog.*
+  https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/. Source for the
+  jitter component of this chapter's `retry_with_backoff()` — the core insight verified here
+  is that exponential backoff alone isn't sufficient; randomizing each client's retry
+  schedule is what actually prevents a "thundering herd" of synchronized retries.
 
 ## Chapter 5 — Cost, Performance, and Model Selection
 
