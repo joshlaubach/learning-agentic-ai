@@ -1,0 +1,4 @@
+{
+  "_status": "placeholder — populated in Unit 11 of the repository build (see PROGRESS.md)",
+  "_schema": "Maps each interview_prep/question_bank.json entry's `id` to a full written model answer covering its `key_concepts`. Kept separate from question_bank.json and never loaded by mock_interview.ipynb or per_chapter_drills.ipynb during a live quiz session."
+}
