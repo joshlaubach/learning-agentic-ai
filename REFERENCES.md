@@ -183,8 +183,39 @@ internal loop in this chapter's build section — not re-cited here.)
 
 ## Chapter 6 — Security and Safeguards
 
-*(Populated in Unit 7 — OpenClaw security guidance, Snowflake MCP governance guidance,
-indirect prompt injection.)*
+- Willison, S. (2022, September 12). "Prompt injection attacks against GPT-3."
+  *simonwillison.net.* https://simonwillison.net/2022/Sep/12/prompt-injection/. The post
+  that coined the term "prompt injection" (by analogy to SQL injection), cited for the
+  direct-injection framing and the concept section's note on where the SQL-injection analogy
+  breaks down (no equivalent to parameterized queries exists for natural-language prompts).
+- Greshake, K., Abdelnabi, S., Mishra, S., Endres, C., Holz, T., & Fritz, M. (2023). "Not
+  What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with
+  Indirect Prompt Injection." *Proceedings of the 16th ACM Workshop on Artificial
+  Intelligence and Security (AISec 2023)*, 79–90. arXiv:2302.12173.
+  https://arxiv.org/abs/2302.12173. The paper that named and characterized indirect prompt
+  injection specifically — cited for this chapter's direct/indirect distinction and as the
+  direct source for break-it #1's attack shape (a malicious directive embedded in content the
+  agent retrieves and processes, not typed by a user).
+- OWASP GenAI Security Project (2024, November 18). "OWASP Top 10 for LLM Applications
+  2025." https://owasp.org/www-project-top-10-for-large-language-model-applications/.
+  LLM01 (Prompt Injection) holds the top spot in this ranking for the second consecutive
+  edition — cited as the industry-standard taxonomy reference for where prompt injection
+  sits among LLM application risks generally, licensed CC BY-SA 4.0.
+- OpenClaw. Security documentation (see Chapter 2's `REFERENCES.md` entry for the project's
+  general docs). Cited here specifically for its layered prompt-injection guidance —
+  treating externally-sourced content as data rather than instructions, tool allowlisting so
+  a tricked model still can't execute a disallowed action, and human-approval gates for
+  sensitive actions — which this chapter's three break-it fixes (instruction/data separation,
+  least-privilege tool scoping, output filtering) map onto directly. Verified live at build
+  time; as with the Chapter 2 citation, this is an actively-updated project's own docs, not a
+  static reference.
+- Snowflake (2026). "Enterprise AI Security: Agentic Controls and MCP Governance."
+  https://www.snowflake.com/en/blog/enterprise-ai-security-agentic-mcp-governance/ — cited
+  for its least-privilege-per-workflow guidance on scoping AI agent tool/data access, as a
+  real-world example of the least-privilege principle this chapter's build section
+  demonstrates mechanically (break-it #2). Live documentation, verified at build time; not
+  MCP-specific to this chapter (Chapter 7 cites the MCP protocol itself for its own tool-
+  integration content) — used here purely for its governance/least-privilege framing.
 
 ## Chapter 7 — Tool Integration
 
