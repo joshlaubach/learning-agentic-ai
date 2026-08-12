@@ -23,7 +23,20 @@ complementary corpora also cited in Unit 4.)*
 
 ## Chapter 1 — Fundamentals of AI Agents
 
-*(Populated in Unit 2 — ReAct citation.)*
+- Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2022). "ReAct:
+  Synergizing Reasoning and Acting in Language Models." arXiv:2210.03629.
+  https://arxiv.org/abs/2210.03629 — the Thought → Action → Observation loop this chapter's
+  `run_agent()` implements. Verified via the live arXiv abstract page at build time (see
+  `curriculum/01_fundamentals.ipynb`).
+
+Model names and pricing cited in Chapter 1's setup section (Claude Haiku 4.5 at $1/$5 per
+million tokens; Claude Sonnet 5 at $2/$10 per million tokens, made permanent by Anthropic on
+2026-08-11; OpenAI's GPT-5.6 Luna as the cheapest current OpenAI tier) were verified via live
+web search on this file's "last verified" date above, not carried over from the original
+build specification unchecked. OpenAI's exact per-token price for GPT-5.6 Luna was reported
+inconsistently across sources at verification time, so `agentlib/llm_client.py` and the
+notebook deliberately do not hardcode a number — see the live pricing page pointer in both
+instead.
 
 ## Chapter 2 — Agent Control Flow
 

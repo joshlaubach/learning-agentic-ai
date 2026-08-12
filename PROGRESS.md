@@ -15,7 +15,7 @@ and do not do more than one unit per session even with budget left over.
       (`README.md`, `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, `REFERENCES.md` skeleton,
       `requirements.txt`, `.env.example`, `.gitignore`), this `PROGRESS.md`, and
       stub/placeholder notebooks and modules throughout.
-- [ ] **Unit 2 — Chapter 1: Fundamentals of AI Agents.** Notebook +
+- [x] **Unit 2 — Chapter 1: Fundamentals of AI Agents.** Notebook +
       `solutions/ch01_fundamentals_answers.md`. Builds `agentlib/llm_client.py` for real
       (the one exception to "build inline first" — every later real-API chapter needs it
       immediately).
@@ -94,5 +94,39 @@ and do not do more than one unit per session even with budget left over.
   cleanly as a package — confirming the toolchain the next 12 units depend on actually works,
   not that any real curriculum content is correct yet (there isn't any).
 
-**Next unit:** Unit 2 — Chapter 1 notebook (`curriculum/01_fundamentals.ipynb`) and
-`solutions/ch01_fundamentals_answers.md`.
+## Notes from Unit 2
+
+- **`agentlib/llm_client.py` built for real.** Provider-agnostic `call_model()`, `ToolCall`/
+  `ModelResponse` dataclasses, `format_tool_result()` / `format_assistant_tool_call()`
+  helpers so callers never branch on `LLM_PROVIDER` themselves, and retry-on-429 with
+  exponential backoff + jitter. `HAS_KEY` is derived from whichever key env var matches
+  `LLM_PROVIDER`.
+- **Model pricing/names were re-verified via live web search at Unit 2 build time**, not
+  copied from the original spec unchecked (per the spec's own instruction). One correction
+  worth flagging: the spec assumed Claude Sonnet 5's introductory $2/$10 pricing would revert
+  to $3/$15 on 2026-09-01 — search confirmed Anthropic instead made $2/$10 **permanent** on
+  2026-08-11. The notebook and `agentlib/llm_client.py` reflect the corrected, verified
+  figure, not the spec's original assumption. OpenAI's GPT-5.6 Luna pricing was reported
+  inconsistently across sources at verification time, so neither the notebook nor the code
+  hardcodes a number for it — both point to the live OpenAI pricing page instead, per spec.
+- **`real_llm_brain` is a class (`RealLLMBrain`), not a plain function**, despite the spec
+  describing a `real_llm_brain()` function. It's still a drop-in callable matching
+  `fake_llm_brain`'s exact `brain(messages) -> {"action": ..., "action_input": ...}`
+  interface — the class form was needed to correctly maintain provider-native multi-turn
+  tool-call state (proper Anthropic `tool_use`/`tool_result` pairing, proper OpenAI
+  `tool_calls`/`role: tool` pairing) across a run, which a stateless function couldn't do
+  without either re-deriving state each call or losing protocol correctness. Documented here
+  since it's a deliberate deviation from the letter of the spec, not an oversight.
+- **Verification:** `pytest --nbmake` run against all 12 notebooks + `tests/` with no `.env`
+  present — 24/24 pass (12 notebooks execute cleanly via their mock-path fallback, 10 new
+  `agentlib.llm_client` unit tests, 2 notebook-JSON sanity tests, plus the 1 pre-existing
+  `agentlib` import test). The notebook was executed in place afterward
+  (`jupyter nbconvert --execute --inplace`) so its committed version shows real example
+  output from the mock path, not blank cells.
+- `REFERENCES.md`'s Chapter 1 section is now filled in (ReAct citation, plus a note on the
+  Sonnet 5 pricing correction above).
+
+**Next unit:** Unit 3 — Chapter 2 notebook (`curriculum/02_control_flow.ipynb`) and
+`solutions/ch02_control_flow_answers.md`. Builds `agentlib/tracing.py`; loop guards and tools
+stay inline per the design rationale, reusing `agentlib/llm_client.py` from Unit 2 for the
+first time.
