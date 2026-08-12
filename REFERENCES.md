@@ -219,8 +219,38 @@ internal loop in this chapter's build section — not re-cited here.)
 
 ## Chapter 7 — Tool Integration
 
-*(Populated in Unit 8 — Model Context Protocol spec and governance, Snowflake MCP server,
-GitHub MCP server, Pydantic, plus the GH Archive dataset entry above.)*
+- Anthropic (2024, November 25). "Model Context Protocol." Open specification and SDKs.
+  https://modelcontextprotocol.io/ ; specification text at
+  https://modelcontextprotocol.io/specification/2025-11-25 ; source at
+  https://github.com/modelcontextprotocol/modelcontextprotocol. Initial specification
+  revision dated 2024-11-05, publicly announced 2024-11-25. Transported over JSON-RPC 2.0;
+  message-flow architecture draws from the Language Server Protocol. Cited for this
+  chapter's entire build section — the real local server and client both implement this
+  spec directly via the official Python SDK (`mcp`, pinned in `requirements.txt`).
+- PyPI / Python Packaging Authority. "JSON API." *PyPI Docs.*
+  https://docs.pypi.org/api/json/ (also mirrored at
+  https://warehouse.readthedocs.io/api-reference/json/, the underlying Warehouse codebase's
+  own docs). URL format `https://pypi.org/pypi/<package_name>/json`. Cited as the real, live
+  data source this chapter's MCP server (`curriculum/_ch07_mcp_server.py`) queries — see the
+  note below on why this replaces the build spec's original GH Archive suggestion.
+- Pydantic. Project documentation, https://docs.pydantic.dev/. No canonical paper; cited for
+  this chapter's `PackageInfo` schema-validation model and its use in distinguishing this
+  chapter's four tool-failure types (a Pydantic `ValidationError`'s `error['type']` field —
+  `"missing"` vs. a type-specific error like `"string_type"` — is exactly what separates a
+  version-mismatch failure from a malformed one in the notebook's decision router).
+- **Access note — GH Archive substitution.** The build spec originally called for a filtered
+  GH Archive slice (`open-index/open-github`) as this chapter's real-data source. GH Archive
+  is Hugging-Face-hosted, and `huggingface.co` is unreachable from this build environment —
+  the same class of block already documented for SQuAD (Unit 4) and `tiktoken` (Unit 6).
+  Rather than fabricate GH-Archive-shaped data or skip the exercise, substituted PyPI's live
+  JSON API: genuinely real, directly reachable with no caching/vendoring workaround needed at
+  all (unlike the SQuAD/tiktoken substitutions, which did need a committed cache), and
+  arguably a better fit for demonstrating a real local MCP server — a tool that looks up live
+  external data on request is closer to how MCP servers are actually used in production than
+  a static dataset dump would be. Three real packages' metadata (`requests`, `numpy`,
+  `anthropic`) are cached at `data/pypi_cache/` so the notebook's normal-operation demo needs
+  no network access on ordinary re-runs; the server's live-fallback path (for any
+  uncached package) is real code, just not exercised in this build's own verification run.
 
 ## Chapter 8 — System Design and Engineering Judgment
 

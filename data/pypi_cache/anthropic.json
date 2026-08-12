@@ -1,0 +1,11 @@
+{
+  "name": "anthropic",
+  "version": "0.121.0",
+  "summary": "The official Python library for the anthropic API",
+  "license": "MIT",
+  "home_page": null,
+  "project_urls": {
+    "Homepage": "https://github.com/anthropics/anthropic-sdk-python",
+    "Repository": "https://github.com/anthropics/anthropic-sdk-python"
+  }
+}

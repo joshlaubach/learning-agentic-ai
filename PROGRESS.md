@@ -31,7 +31,7 @@ and do not do more than one unit per session even with budget left over.
       file.
 - [x] **Unit 7 — Chapter 6: Security and Safeguards.** Notebook + solutions file.
       Responsible-use note must be the first cell.
-- [ ] **Unit 8 — Chapter 7: Tool Integration.** Notebook + solutions file. Builds a real
+- [x] **Unit 8 — Chapter 7: Tool Integration.** Notebook + solutions file. Builds a real
       local MCP server over stdio; pulls and caches a filtered GH Archive slice
       (`open-index/open-github`) — pin the exact date range used, verified against the
       dataset card at build time.
@@ -404,12 +404,66 @@ found per source:**
   agentic-governance blog post for its least-privilege framing — all verified via live search
   at build time.
 
-**Next unit:** Unit 8 — Chapter 7 notebook (`curriculum/07_tool_integration.ipynb`) and
-`solutions/ch07_tool_integration_answers.md`. Per spec this chapter builds a real local MCP
-server over stdio and pulls/caches a filtered GH Archive slice — **GH Archive is Hugging-
-Face-hosted**, which every prior data-access note in this file (Units 3, 4, 6) has confirmed
-is unreachable from this build environment, so that session should expect to need the same
-kind of real-source substitution used for SQuAD (Unit 4) and tiktoken (Unit 6): find a real,
-non-fabricated, differently-hosted equivalent (or a smaller committed real sample) rather
-than fabricating GH Archive-shaped data or skipping the exercise. Check reachability first,
-before writing any notebook content that assumes a working fetch.
+## Notes from Unit 8
+
+- **Confirmed the GH Archive block before writing anything**, per Unit 7's own advice:
+  `huggingface.co`, `data.gharchive.org`, `www.gharchive.org`, and `api.github.com` (the API
+  root — distinct from `raw.githubusercontent.com`, which stays reachable) are all blocked
+  with the same permanent 403-via-proxy pattern documented since Unit 4. Also confirmed, per
+  this session's own repo-scope restrictions, that this session's attached GitHub MCP tools
+  (scoped to `joshlaubach/learning-agentic-ai` only) are not a legitimate workaround —
+  reaching outside that scope to pull real GitHub event data from other repos via those tools
+  would violate the session's own access-scope policy, not just be technically awkward, so
+  that path was correctly ruled out rather than attempted.
+- **Substituted PyPI's live JSON API for GH Archive** — see `REFERENCES.md`'s new access
+  note for the full reasoning. Unlike every prior HF-blocking substitution (SQuAD, the
+  Chapter 3 messy-corpus source, `tiktoken`), this one needed **no vendoring/caching
+  workaround at all**: `pypi.org` is directly reachable from this build environment, so
+  `curriculum/_ch07_mcp_server.py`'s tool genuinely calls a live, real external API on an
+  uncached request. Three packages' metadata (`requests`, `numpy`, `anthropic`) are cached at
+  `data/pypi_cache/` purely so the notebook's own verification runs need no network access,
+  not because live access doesn't work.
+- **Solved a real nbmake/asyncio compatibility issue, not previously hit in this build:**
+  `asyncio.run()` fails inside a notebook kernel's already-running event loop
+  (`RuntimeError: asyncio.run() cannot be called from a running event loop`) — the fix is
+  top-level `await` in the cell instead, which both `jupyter nbconvert --execute` and
+  `pytest --nbmake` support natively. Separately, and less obviously: under `pytest
+  --nbmake` specifically (not under plain `nbconvert`), spawning the MCP server subprocess
+  failed with `io.UnsupportedOperation: fileno` — the `mcp` SDK's `stdio_client()` defaults
+  to redirecting the child process's stderr to `sys.stderr`, but nbmake's kernel I/O capture
+  wraps `sys.stderr` in an object with no real file descriptor, which the subprocess-spawning
+  code needs. Fixed by passing `stdio_client(params, errlog=open(os.devnull, "w"))` — a real
+  file object with a real fd. Verified this fix in an isolated probe notebook under both
+  `nbconvert` and `nbmake` before writing it into the real chapter content, given how easy
+  this class of bug is to miss if only one runner is tested.
+- **No new `agentlib` module** — same reasoning as Units 5 and 7: the six-file inventory is
+  fixed, and none of the six is an MCP-specific file, so the server, client-calling code, and
+  decision router are all inline in the notebook. `curriculum/_ch07_mcp_server.py` is the one
+  exception to "everything lives in the notebook" for this chapter specifically, and
+  necessarily so — MCP's stdio transport spawns the server as a genuine separate OS process,
+  which requires it to exist as a real, independently-executable script, not inline cell code.
+- **`data/schemas/`** (scaffolded empty since Unit 1) gets its first real content this unit —
+  `package_info.schema.json`, generated live by the notebook itself
+  (`PackageInfo.model_json_schema()`) rather than hand-written, so the committed schema file
+  is guaranteed to match the actual Pydantic model rather than drifting from it over time.
+- **Verification:** `pytest --nbmake` on the finished notebook passed at each of the six
+  build stages (title/concept/setup; client connection + schema + normal-operation demo;
+  transient-failure demo; malformed/semantic/version-mismatch demos; decision router;
+  interview drill + recap) before moving to the next; full-suite `pytest --nbmake` across all
+  15 notebooks plus `tests/` also passed (34/34, unchanged agentlib test count — no new
+  module this unit). Notebook executed in place after every stage; the committed version
+  shows real output throughout, including a real PyPI response for `numpy`/`requests`/
+  `anthropic`, a real subprocess-spawned server recovering from two simulated timeouts on the
+  third attempt, and the router correctly classifying all four injected failure shapes.
+- `REFERENCES.md`'s Chapter 7 section is filled in — the MCP specification, PyPI's JSON API
+  docs, Pydantic's own docs, and a full access note documenting the GH Archive → PyPI
+  substitution — all verified via live search at build time.
+
+**Next unit:** Unit 9 — Chapter 8 notebook (`curriculum/08_system_design_judgment.ipynb`) and
+`solutions/ch08_system_design_judgment_answers.md`. Per spec this chapter is mostly markdown
+(a repeatable system-design framework, blank design-doc studios, judgment prompts) with no
+citations expected — REFERENCES.md's Chapter 8 section already notes this and needs no
+verification work. No known data-access risk for this chapter, since it's original
+scenario/judgment content rather than derived from an external dataset — but note that
+Chapter 9 (Unit 10, LLMOps/Deployment) is next after that and doesn't obviously depend on any
+blocked host either, so the run of access-workaround units may be over for now.

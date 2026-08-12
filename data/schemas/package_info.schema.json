@@ -1,0 +1,61 @@
+{
+  "description": "The schema contract for what this tool should return. Optional fields really are\noptional in real PyPI data -- e.g. many packages leave the legacy `home_page` field\nempty and only populate `project_urls` -- but name/version/summary should always be\npresent for a real package.",
+  "properties": {
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "license": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "License"
+    },
+    "home_page": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Home Page"
+    },
+    "project_urls": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Urls"
+    }
+  },
+  "required": [
+    "name",
+    "version",
+    "summary"
+  ],
+  "title": "PackageInfo",
+  "type": "object"
+}
