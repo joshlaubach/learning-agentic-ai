@@ -9,10 +9,10 @@ determinism given a fixed seed wherever a module generates data.
 import pytest
 
 import agentlib
-import agentlib.eval_metrics
+import agentlib.eval_metrics as eval_metrics
 import agentlib.llm_client as llm_client
 import agentlib.loop_guards
-import agentlib.synthetic_data
+import agentlib.synthetic_data as synthetic_data
 import agentlib.tools
 import agentlib.tracing
 
@@ -143,3 +143,76 @@ def test_tracer_reset_clears_spans():
     tracer.reset()
     assert tracer.spans == []
     assert tracer.slowest() is None
+
+
+# --- agentlib.eval_metrics ---
+
+
+def test_precision_recall_at_k():
+    retrieved = ["a", "b", "c", "d"]
+    relevant = {"b", "d", "z"}
+    assert eval_metrics.precision_at_k(retrieved, relevant, k=2) == 0.5  # b in top 2
+    assert eval_metrics.precision_at_k(retrieved, relevant, k=4) == 0.5  # b, d in top 4
+    assert eval_metrics.recall_at_k(retrieved, relevant, k=4) == pytest.approx(2 / 3)
+
+
+def test_precision_at_k_empty_top_k_is_zero():
+    assert eval_metrics.precision_at_k([], {"a"}, k=3) == 0.0
+
+
+def test_mean_reciprocal_rank():
+    assert eval_metrics.mean_reciprocal_rank(["a", "b", "c"], {"b"}) == 0.5
+    assert eval_metrics.mean_reciprocal_rank(["a", "b", "c"], {"a"}) == 1.0
+    assert eval_metrics.mean_reciprocal_rank(["a", "b", "c"], {"z"}) == 0.0
+
+
+def test_evaluate_retrieval_aggregates_across_queries():
+    queries = [
+        {"query": "q1", "relevant_doc_ids": {"a"}},
+        {"query": "q2", "relevant_doc_ids": {"z"}},
+    ]
+
+    def retrieve_fn(query, k):
+        return {"q1": ["a", "b"], "q2": ["x", "y"]}[query]
+
+    result = eval_metrics.evaluate_retrieval(queries, retrieve_fn, k=2)
+    assert result["n_queries"] == 2
+    assert result["mrr"] == 0.5  # q1 hits at rank 1 (mrr=1.0), q2 never hits (mrr=0.0)
+
+
+def test_faithfulness_score_full_and_zero_support():
+    context = ["Anthropic was founded in 2021 by Dario Amodei and Daniela Amodei."]
+    grounded_answer = "Anthropic was founded in 2021."
+    ungrounded_answer = "Bananas are a great source of potassium."
+
+    assert eval_metrics.faithfulness_score(grounded_answer, context) == 1.0
+    assert eval_metrics.faithfulness_score(ungrounded_answer, context) < 0.5
+
+
+# --- agentlib.synthetic_data ---
+
+
+def test_load_squad_sample_from_cache_has_expected_shape():
+    sample = synthetic_data.load_squad_sample()
+    assert len(sample["docs"]) > 0
+    assert len(sample["qa_pairs"]) > 0
+    doc_ids = {d["doc_id"] for d in sample["docs"]}
+    for qa in sample["qa_pairs"]:
+        assert qa["gold_doc_id"] in doc_ids
+
+
+def test_generate_confusable_documents_is_deterministic():
+    sample = synthetic_data.load_squad_sample()
+    run_1 = synthetic_data.generate_confusable_documents(sample["docs"], n=5, seed=42)
+    run_2 = synthetic_data.generate_confusable_documents(sample["docs"], n=5, seed=42)
+    assert run_1 == run_2
+    assert len(run_1) > 0
+    for confusable in run_1:
+        assert confusable["synthetic_change"] is not None
+        assert confusable["confusable_of"] in {d["doc_id"] for d in sample["docs"]}
+
+
+def test_load_messy_corpus_from_cache_is_nonempty_text():
+    text = synthetic_data.load_messy_corpus()
+    assert isinstance(text, str)
+    assert len(text) > 500

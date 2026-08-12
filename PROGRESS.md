@@ -22,10 +22,10 @@ and do not do more than one unit per session even with budget left over.
 - [x] **Unit 3 — Chapter 2: Agent Control Flow.** Notebook + solutions file. Loop guards and
       tools stay inline per the design rationale, but `agentlib/tracing.py` gets built here,
       and `agentlib/llm_client.py` gets its first reuse.
-- [ ] **Unit 4 — Chapter 3: RAG and Retrieval Evaluation.** Notebook + solutions file.
+- [x] **Unit 4 — Chapter 3: RAG and Retrieval Evaluation.** Notebook + solutions file.
       Builds `agentlib/synthetic_data.py` and `agentlib/eval_metrics.py`. Pulls and caches
-      SQuAD 1.1 and SEC EDGAR filings; fills in the Datasets + Chapter 3 sections of
-      `REFERENCES.md`.
+      SQuAD 1.1 and a real messy-document source; fills in the Datasets + Chapter 3 sections
+      of `REFERENCES.md`.
 - [ ] **Unit 5 — Chapter 4: Production Reliability.** Notebook + solutions file.
 - [ ] **Unit 6 — Chapter 5: Cost, Performance, and Model Selection.** Notebook + solutions
       file.
@@ -167,10 +167,91 @@ and do not do more than one unit per session even with budget left over.
   Schmid's subagent-patterns article, and a labeled practitioner-consensus note for the
   supervisor-worker/skills claims that aren't from one canonical source).
 
-**Next unit:** Unit 4 — Chapter 3 notebook (`curriculum/03_rag_evaluation.ipynb`) and
-`solutions/ch03_rag_evaluation_answers.md`. Builds `agentlib/synthetic_data.py` and
-`agentlib/eval_metrics.py`; pulls and caches SQuAD 1.1 and SEC EDGAR filings; fills in the
-Datasets + Chapter 3 sections of `REFERENCES.md`. Given Unit 3's tiktoken finding, double-check
-early whether any of Chapter 3's planned network calls (Hugging Face `datasets`, SEC EDGAR's
-`data.sec.gov`) are reachable from the build environment before writing code that depends on
-them, and design a graceful fallback if not.
+## Notes from Unit 4
+
+**Environment reachability check (done first, per Unit 3's own advice) — three of Chapter
+3's planned real-data sources are unreachable from this build environment, one substitute
+found per source:**
+
+- `huggingface.co`, `hf.co`, and every `*.huggingface.co` CDN host (including
+  `cdn-lfs.huggingface.co`) are blocked by this session's egress policy — same permanent,
+  non-retryable 403 pattern as Unit 3's tiktoken finding. This rules out the Hugging Face
+  `datasets` library for SQuAD, `sentence-transformers`' model download, and (later, Unit 8's
+  problem) the GH Archive slice.
+- `data.sec.gov` **and** `www.sec.gov` are both blocked the same way — SEC EDGAR is entirely
+  unreachable from this environment, not just its API host.
+- `raw.githubusercontent.com`, `api.github.com`, `release-assets.githubusercontent.com`, and
+  `pypi.org` are all reachable. This unlocked three substitutions, each real data from an
+  official/canonical source, just fetched through a different (allowed) channel than the
+  spec suggested:
+  1. **SQuAD 1.1** — fetched directly from `rajpurkar/SQuAD-explorer`'s `dev-v1.1.json` on
+     `raw.githubusercontent.com` (the dataset author's own canonical repo) instead of
+     `datasets.load_dataset("rajpurkar/squad")`. Same real data, same license (CC BY-SA
+     4.0), different access mechanism. Extracted a seeded, deterministic sample (28
+     passages, 55 QA pairs) and cached it at `data/rag_corpus/squad_sample.json` — committed
+     to the repo, so no notebook run (including CI) ever needs network access for it.
+  2. **Messy real-world document source** — the spec's two suggested options (SEC EDGAR;
+     `bigcode/the-stack-github-issues` on Hugging Face) are both unreachable here. Live
+     GitHub Issues API access for an arbitrary third-party repo also isn't available without
+     escalating this session's repo-scoped GitHub access beyond what this task actually
+     needs (attempted against `anthropics/anthropic-sdk-python`'s issues endpoint; got a
+     scoping error, not a network block — see `add_repo`'s own guidance not to attach a repo
+     the task doesn't genuinely need, and requesting push/API access for a read-only content
+     pull would violate least-privilege for no reason). Substituted a real, messy, genuinely
+     un-fabricated document instead: `anthropics/anthropic-sdk-python`'s actual
+     `CHANGELOG.md` (900 lines / ~2,575 words, fetched anonymously via
+     `raw.githubusercontent.com`, no repo attachment needed), which has exactly the
+     properties the ingestion exercise needs — real inconsistent formatting, embedded
+     commit/PR links, and (usefully) many genuinely near-duplicate release-note sections,
+     which turns out to be a *better* fit for the deduplication exercise specifically than a
+     generic issues dump would have been. Cached at
+     `data/rag_corpus/messy_source_changelog.md`.
+  3. **Local embeddings** — swapped `sentence-transformers` (needs a `huggingface.co` model
+     download at runtime) for **spaCy's `en_core_web_md`**, whose model ships as one
+     self-contained wheel hosted on a GitHub release
+     (`github.com/explosion/spacy-models/releases/...`, confirmed reachable and installable
+     via `pip install -r requirements.txt` directly — no separate download step for anyone,
+     regardless of their own network's access to Hugging Face). Verified end-to-end: real
+     300-dim GloVe-style vectors load and produce sensible similarity ordering. This is a
+     `requirements.txt` change from Unit 1's original pins, documented here as a deliberate,
+     verified substitution — not a silent scope cut.
+- **Chroma vs. FAISS:** Unit 1 already chose `faiss-cpu` over `chromadb` for CI reliability
+  reasons unrelated to network access; that decision stands and turned out to be additionally
+  correct here since FAISS needs no runtime download at all (indexes are built from your own
+  embeddings).
+- **PubMedQA / BEIR (optional complementary corpora):** both Hugging-Face-hosted and
+  therefore unreachable here too. Per spec these are optional "if you want more practice"
+  pointers, not required content — kept as a closing-cell markdown pointer only, no runnable
+  code cell, so this doesn't block the chapter.
+- **Caught one real bug via output inspection, not just green tests:** the first version of
+  break-it #3 (answer split across two chunks) used a mock `template_generate` that only
+  ever extracted one single best-matching sentence globally, so its "fix" cell (retrieving
+  both chunks) produced the exact same one-sentence answer as the "bug" cell — the before/
+  after showed no visible difference, which fails the hard constraint that a fix must
+  visibly resolve the bug even though nothing raised an exception. Fixed by having
+  `template_generate` pull the best sentence from *each* retrieved doc instead of one global
+  best; re-verified the fix cell now genuinely shows both facts appearing together.
+- **break-it #5 (offline/online divergence) needed a redesign for the same "looks right but
+  isn't" reason:** the first version wrapped a retriever to "return more results," but
+  `eval_metrics.precision_at_k`/`recall_at_k` truncate to `k` internally regardless of how
+  many results a retriever function returns, so v1 and v2 would have scored identically —
+  caught this by re-reading the code before running it, not empirically. Redesigned v2 as a
+  bigram-augmented TF-IDF retriever (a real, mechanistic ranking difference) — which then, in
+  the actual run, won on *both* the offline and simulated-online metrics rather than
+  diverging as hoped. Per spec this scenario is explicitly meant to be simulated, so rather
+  than keep searching for a real mechanistic change that happens to diverge the "right" way,
+  the online-satisfaction signal was rebuilt as a transparently hand-constructed, clearly
+  -labeled simulation (see the notebook's docstring for that function) — honest about being
+  illustrative rather than dressing up an empirical result that didn't cooperate.
+- **Verification:** `pytest --nbmake` across all 12 notebooks + `tests/` with no `.env`
+  present — 36/36 pass (22 `agentlib` unit tests now, up from 14, covering
+  `eval_metrics`/`synthetic_data`). Notebook executed in place afterward so its committed
+  version shows real output throughout, including the actual (not hypothetical) TF-IDF-
+  beats-embeddings result on this corpus — left as-is rather than tuned to fit a preferred
+  narrative, since it's a real, honestly-obtained measurement.
+- `REFERENCES.md`'s Datasets and Chapter 3 sections are filled in — all citations
+  (SQuAD, RAG, TF-IDF, embeddings, FAISS, RAGAS, the IR-metrics textbook, spaCy, PubMedQA,
+  BEIR) verified via live search at build time.
+
+**Next unit:** Unit 5 — Chapter 4 notebook (`curriculum/04_production_reliability.ipynb`) and
+`solutions/ch04_production_reliability_answers.md`.

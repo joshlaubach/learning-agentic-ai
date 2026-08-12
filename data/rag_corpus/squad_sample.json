@@ -1,0 +1,479 @@
+{
+  "source": "SQuAD 1.1 dev set (Rajpurkar et al., 2016), official rajpurkar/SQuAD-explorer GitHub repo",
+  "license": "CC BY-SA 4.0 (inherited from underlying Wikipedia content; see REFERENCES.md)",
+  "sampled_with_seed": 42,
+  "docs": [
+    {
+      "doc_id": "squad-000",
+      "title": "Genghis_Khan",
+      "text": "The Shah's army was split by diverse internecine feuds and by the Shah's decision to divide his army into small groups concentrated in various cities. This fragmentation was decisive in Khwarezmia's defeats, as it allowed the Mongols, although exhausted from the long journey, to immediately set about defeating small fractions of the Khwarzemi forces instead of facing a unified defense. The Mongol army quickly seized the town of Otrar, relying on superior strategy and tactics. Genghis Khan ordered the wholesale massacre of many of the civilians, enslaved the rest of the population and executed Inalchuq by pouring molten silver into his ears and eyes, as retribution for his actions. Near the end of the battle the Shah fled rather than surrender. Genghis Khan ordered Subutai and Jebe to hunt him down, giving them 20,000 men and two years to do this. The Shah died under mysterious circumstances on a small island within his empire."
+    },
+    {
+      "doc_id": "squad-001",
+      "title": "European_Union_law",
+      "text": "While the Treaties and Regulations will have direct effect (if clear, unconditional and immediate), Directives do not generally give citizens (as opposed to the member state) standing to sue other citizens. In theory, this is because TFEU article 288 says Directives are addressed to the member states and usually \"leave to the national authorities the choice of form and methods\" to implement. In part this reflects that directives often create minimum standards, leaving member states to apply higher standards. For example, the Working Time Directive requires that every worker has at least 4 weeks paid holidays each year, but most member states require more than 28 days in national law. However, on the current position adopted by the Court of Justice, citizens have standing to make claims based on national laws that implement Directives, but not from Directives themselves. Directives do not have so called \"horizontal\" direct effect (i.e. between non-state parties). This view was instantly controversial, and in the early 1990s three Advocate Generals persuasively argued that Directives should create rights and duties for all citizens. The Court of Justice refused, but there are five large exceptions."
+    },
+    {
+      "doc_id": "squad-002",
+      "title": "1973_oil_crisis",
+      "text": "Federal safety standards, such as NHTSA Federal Motor Vehicle Safety Standard 215 (pertaining to safety bumpers), and compacts like the 1974 Mustang I were a prelude to the DOT \"downsize\" revision of vehicle categories. By 1977, GM's full-sized cars reflected the crisis. By 1979, virtually all \"full-size\" American cars had shrunk, featuring smaller engines and smaller outside dimensions. Chrysler ended production of their full-sized luxury sedans at the end of the 1981 model year, moving instead to a full front-wheel drive lineup for 1982 (except for the M-body Dodge Diplomat/Plymouth Gran Fury and Chrysler New Yorker Fifth Avenue sedans)."
+    },
+    {
+      "doc_id": "squad-003",
+      "title": "Genghis_Khan",
+      "text": "Genghis Khan is regarded as one of the prominent leaders in Mongolia's history. He is responsible for the emergence of the Mongols as a political and ethnic identity because there was no unified identity between the tribes that had cultural similarity. He reinforced many Mongol traditions and provided stability and unity during a time of almost endemic warfare between tribes. He is also given credit for the introduction of the traditional Mongolian script and the creation of the Ikh Zasag (Great Administration), the first written Mongolian law. \"Ikh Zasag law adopted during Genghis Khan\u2019s time in Mongolia had points to punish illegal matters related to corruption and bribery very heavily,\" Mongolian President Tsakhiagiin Elbegdorj noted. President Elbegdorj sees Genghis Khan as a leader from whom to learn for anti-corruption efforts as Genghis Khan sought equal protection under the law for all citizens regardless of status or wealth. \"Chinggis (Genghis Khan)...was a man who deeply realized that the justice begins and consolidates with the equality of law, and not with the distinctions between people. He was a man who knew that the good laws and rules lived longer than fancy palaces,\" Elbegdorj said in his speech on the 850th anniversary of Chinggis Khaan's birth. In summary, Mongolians see him as the fundamental figure in the founding of the Mongol Empire and therefore the basis for Mongolia as a country."
+    },
+    {
+      "doc_id": "squad-004",
+      "title": "Chloroplast",
+      "text": "While primary chloroplasts have a double membrane from their cyanobacterial ancestor, secondary chloroplasts have additional membranes outside of the original two, as a result of the secondary endosymbiotic event, when a nonphotosynthetic eukaryote engulfed a chloroplast-containing alga but failed to digest it\u2014much like the cyanobacterium at the beginning of this story. The engulfed alga was broken down, leaving only its chloroplast, and sometimes its cell membrane and nucleus, forming a chloroplast with three or four membranes\u2014the two cyanobacterial membranes, sometimes the eaten alga's cell membrane, and the phagosomal vacuole from the host's cell membrane."
+    },
+    {
+      "doc_id": "squad-005",
+      "title": "Yuan_dynasty",
+      "text": "The system of bureaucracy created by Kublai Khan reflected various cultures in the empire, including that of the Han Chinese, Khitans, Jurchens, Mongols, and Tibetan Buddhists. While the official terminology of the institutions may indicate the government structure was almost purely that of native Chinese dynasties, the Yuan bureaucracy actually consisted of a mix of elements from different cultures. The Chinese-style elements of the bureaucracy mainly came from the native Tang, Song, as well as Khitan Liao and Jurchen Jin dynasties. Chinese advisers such as Liu Bingzhong and Yao Shu gave strong influence to Kublai's early court, and the central government administration was established within the first decade of Kublai's reign. This government adopted the traditional Chinese tripartite division of authority among civil, military, and censorial offices, including the Central Secretariat (Zhongshu Sheng) to manage civil affairs, the Privy Council (Chinese: \u6a1e\u5bc6\u9662) to manage military affairs, and the Censorate to conduct internal surveillance and inspection. The actual functions of both central and local government institutions, however, showed a major overlap between the civil and military jurisdictions, due to the Mongol traditional reliance on military institutions and offices as the core of governance. Nevertheless, such a civilian bureaucracy, with the Central Secretariat as the top institution that was (directly or indirectly) responsible for most other governmental agencies (such as the traditional Chinese-style Six Ministries), was created in China. At various times another central government institution called the Department of State Affairs (Shangshu Sheng) that mainly dealt with finance was established (such as during the reign of K\u00fcl\u00fcg Khan or Emperor Wuzong), but was usually abandoned shortly afterwards."
+    },
+    {
+      "doc_id": "squad-006",
+      "title": "Immune_system",
+      "text": "Long-term active memory is acquired following infection by activation of B and T cells. Active immunity can also be generated artificially, through vaccination. The principle behind vaccination (also called immunization) is to introduce an antigen from a pathogen in order to stimulate the immune system and develop specific immunity against that particular pathogen without causing disease associated with that organism. This deliberate induction of an immune response is successful because it exploits the natural specificity of the immune system, as well as its inducibility. With infectious disease remaining one of the leading causes of death in the human population, vaccination represents the most effective manipulation of the immune system mankind has developed."
+    },
+    {
+      "doc_id": "squad-007",
+      "title": "Victoria_(Australia)",
+      "text": "As of August 2010, Victoria had 1,548 public schools, 489 Catholic schools and 214 independent schools. Just under 540,800 students were enrolled in public schools, and just over 311,800 in private schools. Over 61 per cent of private students attend Catholic schools. More than 462,000 students were enrolled in primary schools and more than 390,000 in secondary schools. Retention rates for the final two years of secondary school were 77 per cent for public school students and 90 per cent for private school students. Victoria has about 63,519 full-time teachers."
+    },
+    {
+      "doc_id": "squad-008",
+      "title": "Normans",
+      "text": "Between 1402 and 1405, the expedition led by the Norman noble Jean de Bethencourt and the Poitevine Gadifer de la Salle conquered the Canarian islands of Lanzarote, Fuerteventura and El Hierro off the Atlantic coast of Africa. Their troops were gathered in Normandy, Gascony and were later reinforced by Castilian colonists."
+    },
+    {
+      "doc_id": "squad-009",
+      "title": "Force",
+      "text": "This means that in a closed system of particles, there are no internal forces that are unbalanced. That is, the action-reaction force shared between any two objects in a closed system will not cause the center of mass of the system to accelerate. The constituent objects only accelerate with respect to each other, the system itself remains unaccelerated. Alternatively, if an external force acts on the system, then the center of mass will experience an acceleration proportional to the magnitude of the external force divided by the mass of the system.:19-1"
+    },
+    {
+      "doc_id": "squad-010",
+      "title": "American_Broadcasting_Company",
+      "text": "Edward John Noble, the owner of Life Savers candy, drugstore chain Rexall and New York City radio station WMCA, purchased the network for $8 million. Due to FCC ownership rules, the transaction, which was to include the purchase of three RCA stations by Noble, would require him to resell his station with the FCC's approval. The Commission authorized the transaction on October 12, 1943. Soon afterward, the Blue Network was purchased by the new company Noble founded, the American Broadcasting System. Noble subsequently acquired the rights to the \"American Broadcasting Company\" name from George B. Storer in 1944; its parent company adopted the corporate name American Broadcasting Companies, Inc. Woods retained his position as president and CEO of ABC until December 1949, and was subsequently promoted to vice-chairman of the board before leaving ABC altogether on June 30, 1951."
+    },
+    {
+      "doc_id": "squad-011",
+      "title": "Teacher",
+      "text": "In past times, corporal punishment (spanking or paddling or caning or strapping or birching the student in order to cause physical pain) was one of the most common forms of school discipline throughout much of the world. Most Western countries, and some others, have now banned it, but it remains lawful in the United States following a US Supreme Court decision in 1977 which held that paddling did not violate the US Constitution."
+    },
+    {
+      "doc_id": "squad-012",
+      "title": "Ctenophora",
+      "text": "Almost all species are hermaphrodites, in other words they function as both males and females at the same time \u2013 except that in two species of the genus Ocryopsis individuals remain of the same single sex all their lives. The gonads are located in the parts of the internal canal network under the comb rows, and eggs and sperm are released via pores in the epidermis. Fertilization is external in most species, but platyctenids use internal fertilization and keep the eggs in brood chambers until they hatch. Self-fertilization has occasionally been seen in species of the genus Mnemiopsis, and it is thought that most of the hermaphroditic species are self-fertile."
+    },
+    {
+      "doc_id": "squad-013",
+      "title": "Doctor_Who",
+      "text": "Six soundtrack releases have been released since 2005. The first featured tracks from the first two series, the second and third featured music from the third and fourth series respectively. The fourth was released on 4 October 2010 as a two disc special edition and contained music from the 2008\u20132010 specials (The Next Doctor to End of Time Part 2). The soundtrack for Series 5 was released on 8 November 2010. In February 2011, a soundtrack was released for the 2010 Christmas special: \"A Christmas Carol\", and in December 2011 the soundtrack for Series 6 was released, both by Silva Screen Records."
+    },
+    {
+      "doc_id": "squad-014",
+      "title": "Scottish_Parliament",
+      "text": "The Presiding Officer (or Deputy Presiding Officer) decides who speaks in chamber debates and the amount of time for which they are allowed to speak. Normally, the Presiding Officer tries to achieve a balance between different viewpoints and political parties when selecting members to speak. Typically, ministers or party leaders open debates, with opening speakers given between 5 and 20 minutes, and succeeding speakers allocated less time. The Presiding Officer can reduce speaking time if a large number of members wish to participate in the debate. Debate is more informal than in some parliamentary systems. Members may call each other directly by name, rather than by constituency or cabinet position, and hand clapping is allowed. Speeches to the chamber are normally delivered in English, but members may use Scots, Gaelic, or any other language with the agreement of the Presiding Officer. The Scottish Parliament has conducted debates in the Gaelic language."
+    },
+    {
+      "doc_id": "squad-015",
+      "title": "Genghis_Khan",
+      "text": "The Mongol military was also successful in siege warfare, cutting off resources for cities and towns by diverting certain rivers, taking enemy prisoners and driving them in front of the army, and adopting new ideas, techniques and tools from the people they conquered, particularly in employing Muslim and Chinese siege engines and engineers to aid the Mongol cavalry in capturing cities. Another standard tactic of the Mongol military was the commonly practiced feigned retreat to break enemy formations and to lure small enemy groups away from the larger group and defended position for ambush and counterattack."
+    },
+    {
+      "doc_id": "squad-016",
+      "title": "American_Broadcasting_Company",
+      "text": "ABC's daytime schedule currently features talk shows The View and The Chew, and the soap opera General Hospital, the latter of which is the longest-running entertainment program in the history of the ABC television network, having aired since 1963. ABC also broadcasts the morning news program Good Morning America and has done so since 1975, though that program is not considered to be part of the ABC Daytime block. In addition to the long-running All My Children (1970\u20132011) and One Life to Live (1968\u20132012), notable past soap operas seen on the daytime lineup include Ryan's Hope, Dark Shadows, Loving, The City and Port Charles. ABC also aired the last nine years of the Procter & Gamble-produced soap The Edge of Night, following its cancellation by CBS in 1975. ABC Daytime has also aired a number of game shows, including The Dating Game, The Newlywed Game, Let's Make a Deal, Password, Split Second, The $10,000/$20,000 Pyramid, Family Feud, The Better Sex, Trivia Trap, All-Star Blitz and Hot Streak."
+    },
+    {
+      "doc_id": "squad-017",
+      "title": "Genghis_Khan",
+      "text": "One theory suggests the name stems from a palatalised version of the Mongolian and Turkic word tenggis, meaning \"ocean\", \"oceanic\" or \"wide-spreading\". (Lake Baikal and ocean were called tenggis by the Mongols. However, it seems that if they had meant to call Genghis tenggis they could have said, and written, \"Tenggis Khan\", which they did not.) Zh\u00e8ng (Chinese: \u6b63) meaning \"right\", \"just\", or \"true\", would have received the Mongolian adjectival modifier -s, creating \"Jenggis\", which in medieval romanization would be written \"Genghis\". It is likely that the 13th century Mongolian pronunciation would have closely matched \"Chinggis\"."
+    },
+    {
+      "doc_id": "squad-018",
+      "title": "Huguenot",
+      "text": "Both before and after the 1708 passage of the Foreign Protestants Naturalization Act, an estimated 50,000 Protestant Walloons and Huguenots fled to England, with many moving on to Ireland and elsewhere. In relative terms, this was one of the largest waves of immigration ever of a single ethnic community to Britain. Andrew Lortie (born Andr\u00e9 Lortie), a leading Huguenot theologian and writer who led the exiled community in London, became known for articulating their criticism of the Pope and the doctrine of transubstantiation during Mass."
+    },
+    {
+      "doc_id": "squad-019",
+      "title": "Newcastle_upon_Tyne",
+      "text": "Newcastle Mela, held on the late August bank holiday weekend, is an annual two-day multicultural event, blending drama, music and food from Punjabi, Pakistani, Bengali and Hindu cultures. NewcastleGateshead also holds an annual International Arts Fair. The 2009 event will be in the Norman Foster designed Sage Gateshead Music and Arts Centre in September. In October, there is the Design Event festival\u2014an annual festival providing the public with an opportunity to see work by regional, national and international designers. The SAMA Festival, an East Asian cultural festival is also held in early October."
+    },
+    {
+      "doc_id": "squad-020",
+      "title": "Newcastle_upon_Tyne",
+      "text": "The earliest known movie featuring some exterior scenes filmed in the city is On the Night of the Fire (1939), though by and large the action is studio-bound. Later came The Clouded Yellow (1951) and Payroll (1961), both of which feature more extensive scenes filmed in the city. The 1971 film Get Carter was shot on location in and around Newcastle and offers an opportunity to see what Newcastle looked like in the 1960s and early 1970s. The city was also backdrop to another gangster film, the 1988 film noir thriller Stormy Monday, directed by Mike Figgis and starring Tommy Lee Jones, Melanie Griffith, Sting and Sean Bean."
+    },
+    {
+      "doc_id": "squad-021",
+      "title": "Victoria_and_Albert_Museum",
+      "text": "In 2002, the Museum acquired the Costiff collection of 178 Vivienne Westwood costumes. Other famous designers with work in the collection include Coco Chanel, Hubert de Givenchy, Christian Dior, Crist\u00f3bal Balenciaga, Yves Saint Laurent, Guy Laroche, Irene Galitzine, Mila Sch\u00f6n, Valentino Garavani, Norman Norell, Norman Hartnell, Zandra Rhodes, Hardy Amies, Mary Quant, Christian Lacroix, Jean Muir and Pierre Cardin. The museum continues to acquire examples of modern fashion to add to the collection."
+    },
+    {
+      "doc_id": "squad-022",
+      "title": "Nikola_Tesla",
+      "text": "Tesla could be harsh at times and openly expressed disgust for overweight people, such as when he fired a secretary because of her weight.:110 He was quick to criticize clothing; on several occasions, Tesla directed a subordinate to go home and change her dress.:33"
+    },
+    {
+      "doc_id": "squad-023",
+      "title": "Chloroplast",
+      "text": "Recently, chloroplasts have caught attention by developers of genetically modified crops. Since, in most flowering plants, chloroplasts are not inherited from the male parent, transgenes in these plastids cannot be disseminated by pollen. This makes plastid transformation a valuable tool for the creation and cultivation of genetically modified plants that are biologically contained, thus posing significantly lower environmental risks. This biological containment strategy is therefore suitable for establishing the coexistence of conventional and organic agriculture. While the reliability of this mechanism has not yet been studied for all relevant crop species, recent results in tobacco plants are promising, showing a failed containment rate of transplastomic plants at 3 in 1,000,000."
+    },
+    {
+      "doc_id": "squad-024",
+      "title": "University_of_Chicago",
+      "text": "In the arts and entertainment, minimalist composer Philip Glass, dancer, choreographer and leader in the field of dance anthropology Katherine Dunham, Bungie founder and developer of the Halo video game series Alex Seropian, Serial host Sarah Koenig, actor Ed Asner, Pulitzer Prize for Criticism winning film critic and the subject of the 2014 documentary film Life Itself Roger Ebert, director, writer, and comedian Mike Nichols, film director and screenwriter Philip Kaufman, and Carl Van Vechten, photographer and writer, are graduates."
+    },
+    {
+      "doc_id": "squad-025",
+      "title": "Chloroplast",
+      "text": "Like mitochondria, chloroplasts use the potential energy stored in an H+, or hydrogen ion gradient to generate ATP energy. The two photosystems capture light energy to energize electrons taken from water, and release them down an electron transport chain. The molecules between the photosystems harness the electrons' energy to pump hydrogen ions into the thylakoid space, creating a concentration gradient, with more hydrogen ions (up to a thousand times as many) inside the thylakoid system than in the stroma. The hydrogen ions in the thylakoid space then diffuse back down their concentration gradient, flowing back out into the stroma through ATP synthase. ATP synthase uses the energy from the flowing hydrogen ions to phosphorylate adenosine diphosphate into adenosine triphosphate, or ATP. Because chloroplast ATP synthase projects out into the stroma, the ATP is synthesized there, in position to be used in the dark reactions."
+    },
+    {
+      "doc_id": "squad-026",
+      "title": "Southern_California",
+      "text": "Southern California consists of one of the more varied collections of geologic, topographic, and natural ecosystem landscapes in a diversity outnumbering other major regions in the state and country. The region spans from Pacific Ocean islands, shorelines, beaches, and coastal plains, through the Transverse and Peninsular Ranges with their peaks, into the large and small interior valleys, to the vast deserts of California."
+    },
+    {
+      "doc_id": "squad-027",
+      "title": "Imperialism",
+      "text": "In anglophone academic works, theories regarding imperialism are often based on the British experience. The term \"Imperialism\" was originally introduced into English in its present sense in the late 1870s by opponents of the allegedly aggressive and ostentatious imperial policies of British prime Minister Benjamin Disraeli. It was shortly appropriated by supporters of \"imperialism\" such as Joseph Chamberlain. For some, imperialism designated a policy of idealism and philanthropy; others alleged that it was characterized by political self-interest, and a growing number associated it with capitalist greed. Liberal John A. Hobson and Marxist Vladimir Lenin added a more theoretical macroeconomic connotation to the term. Lenin in particular exerted substantial influence over later Marxist conceptions of imperialism with his work Imperialism, the Highest Stage of Capitalism. In his writings Lenin portrayed Imperialism as a natural extension of capitalism that arose from need for capitalist economies to constantly expand investment, material resources and manpower in such a way that necessitated colonial expansion. This conception of imperialism as a structural feature of capitalism is echoed by later Marxist theoreticians. Many theoreticians on the left have followed in emphasizing the structural or systemic character of \"imperialism\". Such writers have expanded the time period associated with the term so that it now designates neither a policy, nor a short space of decades in the late 19th century, but a world system extending over a period of centuries, often going back to Christopher Columbus and, in some accounts, to the Crusades. As the application of the term has expanded, its meaning has shifted along five distinct but often parallel axes: the moral, the economic, the systemic, the cultural, and the temporal. Those changes reflect - among other shifts in sensibility - a growing unease, even squeamishness, with the fact of power, specifically, Western power."
+    }
+  ],
+  "qa_pairs": [
+    {
+      "qa_id": "5726c3b3708984140094d0cf",
+      "question": "What feature of the Shah's army enable the weary Mongol forces easy early victories?",
+      "answer": "fragmentation",
+      "gold_doc_id": "squad-000"
+    },
+    {
+      "qa_id": "5726c3b3708984140094d0d0",
+      "question": "Which town's massacre did Genghis Khan order in retribution for the treatment of his envoys?",
+      "answer": "Otrar",
+      "gold_doc_id": "squad-000"
+    },
+    {
+      "qa_id": "57269cc3dd62a815002e8b12",
+      "question": "What generally does not allow citizens to sue other citizens?",
+      "answer": "Directives",
+      "gold_doc_id": "squad-001"
+    },
+    {
+      "qa_id": "57269cc3dd62a815002e8b13",
+      "question": "How many paid holiday days does the Working Time directive require workers to have each year?",
+      "answer": "4 weeks",
+      "gold_doc_id": "squad-001"
+    },
+    {
+      "qa_id": "57265ceddd62a815002e82b8",
+      "question": "By which year did full sized American cars shrink to be smaller?",
+      "answer": "1979",
+      "gold_doc_id": "squad-002"
+    },
+    {
+      "qa_id": "57265ceddd62a815002e82b9",
+      "question": "By which year did Chrysler ended its full sized luxury model?",
+      "answer": "1981",
+      "gold_doc_id": "squad-002"
+    },
+    {
+      "qa_id": "5727515af1498d1400e8f63a",
+      "question": "What is the Mongolian name of the first Mongolian laws codified in writing?",
+      "answer": "Ikh Zasag",
+      "gold_doc_id": "squad-003"
+    },
+    {
+      "qa_id": "5727515af1498d1400e8f63b",
+      "question": "What did Mongolian President Tsakhiagian Elbegdorj note was significantly punished by Genghis Khan's laws?",
+      "answer": "corruption and bribery",
+      "gold_doc_id": "squad-003"
+    },
+    {
+      "qa_id": "572961f61d04691400779359",
+      "question": "What kind of membrane do primary chloroplasts have?",
+      "answer": "double",
+      "gold_doc_id": "squad-004"
+    },
+    {
+      "qa_id": "572961f61d0469140077935a",
+      "question": "What differs about secondary chloroplasts' membranes?",
+      "answer": "additional membranes outside of the original two",
+      "gold_doc_id": "squad-004"
+    },
+    {
+      "qa_id": "57287d4a2ca10214002da3e4",
+      "question": "What cultures were part of Kublai's administration?",
+      "answer": "Han Chinese, Khitans, Jurchens, Mongols, and Tibetan Buddhists",
+      "gold_doc_id": "squad-005"
+    },
+    {
+      "qa_id": "57287d4a2ca10214002da3e5",
+      "question": "What dynasties inspired the Chinese-like elements of Kublai's government?",
+      "answer": "Tang, Song, as well as Khitan Liao and Jurchen Jin dynasties",
+      "gold_doc_id": "squad-005"
+    },
+    {
+      "qa_id": "5729ffda1d046914007796af",
+      "question": "By what process can active immunity be generated in an artificial manner?",
+      "answer": "vaccination",
+      "gold_doc_id": "squad-006"
+    },
+    {
+      "qa_id": "5729ffda1d046914007796b0",
+      "question": "What is the process of vaccination also known as?",
+      "answer": "immunization",
+      "gold_doc_id": "squad-006"
+    },
+    {
+      "qa_id": "570d44abb3d812140066d5fd",
+      "question": "By August 2010 how many public schools did Victoria have?",
+      "answer": "1,548",
+      "gold_doc_id": "squad-007"
+    },
+    {
+      "qa_id": "570d44abb3d812140066d5fe",
+      "question": "How many Catholic schools were in Victoria?",
+      "answer": "489",
+      "gold_doc_id": "squad-007"
+    },
+    {
+      "qa_id": "56de49564396321400ee277a",
+      "question": "What continent are the Canarian Islands off the coast of?",
+      "answer": "Africa",
+      "gold_doc_id": "squad-008"
+    },
+    {
+      "qa_id": "573755afc3c5551400e51eb3",
+      "question": "What experiences acceleration when external force is applied to a system?",
+      "answer": "center of mass",
+      "gold_doc_id": "squad-009"
+    },
+    {
+      "qa_id": "573755afc3c5551400e51eb4",
+      "question": "In what kind of system of particles are there no unbalanced iinternal forces?",
+      "answer": "closed",
+      "gold_doc_id": "squad-009"
+    },
+    {
+      "qa_id": "572685d1f1498d1400e8e29e",
+      "question": "What candy company did Edward John Noble own?",
+      "answer": "Life Savers candy",
+      "gold_doc_id": "squad-010"
+    },
+    {
+      "qa_id": "572685d1f1498d1400e8e29f",
+      "question": "When was the sale of NBC Blue to Edward John Noble authorized?",
+      "answer": "October 12, 1943",
+      "gold_doc_id": "squad-010"
+    },
+    {
+      "qa_id": "56e7586d37bdd419002c3eb3",
+      "question": "How common was the form of corporal punishment in the past?",
+      "answer": "one of the most common",
+      "gold_doc_id": "squad-011"
+    },
+    {
+      "qa_id": "56e7586d37bdd419002c3eb4",
+      "question": "Where is corporal punishment no longer practiced?",
+      "answer": "Most Western countries",
+      "gold_doc_id": "squad-011"
+    },
+    {
+      "qa_id": "572683075951b619008f7513",
+      "question": "How are eggs and sperm released?",
+      "answer": "via pores in the epidermis",
+      "gold_doc_id": "squad-012"
+    },
+    {
+      "qa_id": "572683075951b619008f7514",
+      "question": "How do platyctenids reproduce?",
+      "answer": "internal fertilization and keep the eggs in brood chambers until they hatch.",
+      "gold_doc_id": "squad-012"
+    },
+    {
+      "qa_id": "57281cb22ca10214002d9e1e",
+      "question": "How many Doctor Who soundtracks have been released since 2005?",
+      "answer": "Six",
+      "gold_doc_id": "squad-013"
+    },
+    {
+      "qa_id": "57281cb22ca10214002d9e1f",
+      "question": "Which series were featured on the first Doctor Who soundtrack?",
+      "answer": "the first two series",
+      "gold_doc_id": "squad-013"
+    },
+    {
+      "qa_id": "572fc41f947a6a140053cc80",
+      "question": "Who decides who gets to speak in the chamber debates?",
+      "answer": "The Presiding Officer",
+      "gold_doc_id": "squad-014"
+    },
+    {
+      "qa_id": "572fc41f947a6a140053cc81",
+      "question": "What is also decided by the Presiding Officer?",
+      "answer": "amount of time for which they are allowed to speak",
+      "gold_doc_id": "squad-014"
+    },
+    {
+      "qa_id": "57273d06f1498d1400e8f4f6",
+      "question": "What would Mongol armies divert in order to cut off the resources of cities they were attacking?",
+      "answer": "rivers",
+      "gold_doc_id": "squad-015"
+    },
+    {
+      "qa_id": "57273d06f1498d1400e8f4f7",
+      "question": "What were the cultural origins of the engineers and technology adopted by the Mongol military?",
+      "answer": "Muslim and Chinese",
+      "gold_doc_id": "squad-015"
+    },
+    {
+      "qa_id": "5726e671dd62a815002e9464",
+      "question": "What series is the longest running program in ABC history?",
+      "answer": "General Hospital",
+      "gold_doc_id": "squad-016"
+    },
+    {
+      "qa_id": "5726e671dd62a815002e9465",
+      "question": "When did Good Morning America begin airing?",
+      "answer": "1975",
+      "gold_doc_id": "squad-016"
+    },
+    {
+      "qa_id": "5727580bf1498d1400e8f69a",
+      "question": "Which Mongolian word meaning wide-spreading may have contributed to the appellation Genghis?",
+      "answer": "tenggis",
+      "gold_doc_id": "squad-017"
+    },
+    {
+      "qa_id": "5727580bf1498d1400e8f69b",
+      "question": "Which massive lake did the Mongolians call tenggis?",
+      "answer": "Lake Baikal",
+      "gold_doc_id": "squad-017"
+    },
+    {
+      "qa_id": "5710f114a58dae1900cd6b60",
+      "question": "What English law made that country more welcoming to Huguenots?",
+      "answer": "Foreign Protestants Naturalization Act",
+      "gold_doc_id": "squad-018"
+    },
+    {
+      "qa_id": "5710f114a58dae1900cd6b61",
+      "question": "When was this naturalization act passed?",
+      "answer": "1708",
+      "gold_doc_id": "squad-018"
+    },
+    {
+      "qa_id": "572683e6f1498d1400e8e24c",
+      "question": "What is an annual two-day multicultural event held in Newcastle in late August?",
+      "answer": "Newcastle Mela",
+      "gold_doc_id": "squad-019"
+    },
+    {
+      "qa_id": "572683e6f1498d1400e8e24e",
+      "question": "Where will the 2009 International Arts Fair be held?",
+      "answer": "Sage Gateshead Music and Arts Centre",
+      "gold_doc_id": "squad-019"
+    },
+    {
+      "qa_id": "57268731f1498d1400e8e2e2",
+      "question": "What is the earliest known movie featuring scenes filmed outdoors in Newcastle?",
+      "answer": "On the Night of the Fire",
+      "gold_doc_id": "squad-020"
+    },
+    {
+      "qa_id": "57268731f1498d1400e8e2e3",
+      "question": "What 1971 film was shot on location in Newcastle?",
+      "answer": "Get Carter",
+      "gold_doc_id": "squad-020"
+    },
+    {
+      "qa_id": "5726e4eedd62a815002e9438",
+      "question": "When did the V&A acquired the Costiff collection?",
+      "answer": "2002",
+      "gold_doc_id": "squad-021"
+    },
+    {
+      "qa_id": "5726e4eedd62a815002e9439",
+      "question": "The Costiff collection comprised costumes designed by which British fashion icon?",
+      "answer": "Vivienne Westwood",
+      "gold_doc_id": "squad-021"
+    },
+    {
+      "qa_id": "56e12005cd28a01900c67617",
+      "question": "Who was Tesla prejudiced against?",
+      "answer": "overweight people",
+      "gold_doc_id": "squad-022"
+    },
+    {
+      "qa_id": "56e12005cd28a01900c67618",
+      "question": "Who did he fire?",
+      "answer": "secretary",
+      "gold_doc_id": "squad-022"
+    },
+    {
+      "qa_id": "57297991af94a219006aa4b7",
+      "question": "Why are chloroplasts of interest in GMO crops?",
+      "answer": "transgenes in these plastids cannot be disseminated by pollen",
+      "gold_doc_id": "squad-023"
+    },
+    {
+      "qa_id": "57297991af94a219006aa4b8",
+      "question": "What is reduced by using plastid transformation for gene modification?",
+      "answer": "environmental risks",
+      "gold_doc_id": "squad-023"
+    },
+    {
+      "qa_id": "57286d7d4b864d19001649e0",
+      "question": "What minimalist composer is also a university graduate?",
+      "answer": "Philip Glass",
+      "gold_doc_id": "squad-024"
+    },
+    {
+      "qa_id": "57286d7d4b864d19001649e1",
+      "question": "What is the name of the Bungie Inc. founder who is also a university graduate?",
+      "answer": "Alex Seropian",
+      "gold_doc_id": "squad-024"
+    },
+    {
+      "qa_id": "572975073f37b31900478415",
+      "question": "What do chloroplasts do like mitochondria?",
+      "answer": "generate ATP energy",
+      "gold_doc_id": "squad-025"
+    },
+    {
+      "qa_id": "572975073f37b31900478416",
+      "question": "Where do chloroplasts pump hydrogen?",
+      "answer": "into the thylakoid space",
+      "gold_doc_id": "squad-025"
+    },
+    {
+      "qa_id": "5705fd8475f01819005e7841",
+      "question": "The region spans starting at islands found in which body of water?",
+      "answer": "Pacific Ocean",
+      "gold_doc_id": "squad-026"
+    },
+    {
+      "qa_id": "5705fd8475f01819005e7840",
+      "question": "What term best describes southern California's collection of landscapes?",
+      "answer": "varied",
+      "gold_doc_id": "squad-026"
+    },
+    {
+      "qa_id": "57309bfb8ab72b1400f9c5e6",
+      "question": "Theories on imperialism use which country as a model?",
+      "answer": "British",
+      "gold_doc_id": "squad-027"
+    },
+    {
+      "qa_id": "57309bfb8ab72b1400f9c5e7",
+      "question": "When did the term imperialism first come to be used by its current definition?",
+      "answer": "in the late 1870s",
+      "gold_doc_id": "squad-027"
+    }
+  ]
+}

@@ -17,9 +17,39 @@ Inline citations appear the first time a concept is named in a chapter's concept
 
 ## Datasets
 
-*(Populated in the units that first use each dataset — SQuAD and SEC EDGAR in Unit 4/Chapter
-3, GH Archive in Unit 8/Chapter 7. PubMedQA, BEIR, and `the-stack-github-issues` are optional
-complementary corpora also cited in Unit 4.)*
+- **SQuAD** — Rajpurkar, P., Zhang, J., Lopyrev, K., & Liang, P. (2016). "SQuAD: 100,000+
+  Questions for Machine Comprehension of Text." *EMNLP 2016*, Austin, TX. arXiv:1606.05250.
+  https://arxiv.org/abs/1606.05250. License: CC BY-SA 4.0 (per the canonical `rajpurkar/squad`
+  Hugging Face dataset card, inherited from the underlying Wikipedia content). Default variant
+  used: SQuAD 1.1 (every question answerable). **Access note:** this repo's build environment
+  cannot reach `huggingface.co`, so the `datasets` library's `load_dataset("rajpurkar/squad")`
+  path could not be used — the same real data (SQuAD 1.1 `dev-v1.1.json`) was instead fetched
+  from the dataset authors' own canonical GitHub repository,
+  `rajpurkar/SQuAD-explorer` (`raw.githubusercontent.com`), which is reachable. See
+  `agentlib/synthetic_data.py` and `PROGRESS.md`'s Unit 4 notes.
+- **Messy real-world document source (Chapter 3 ingestion exercise)** — the spec's original
+  suggestions here (SEC EDGAR filings; the Hugging-Face-hosted `bigcode/the-stack-github-issues`)
+  are both unreachable from this build environment (SEC EDGAR's hosts are blocked outright;
+  Hugging Face is blocked the same way SQuAD's `datasets` path was). Substituted a real,
+  unedited document instead: `anthropics/anthropic-sdk-python`'s `CHANGELOG.md`
+  (https://github.com/anthropics/anthropic-sdk-python/blob/main/CHANGELOG.md), fetched via
+  `raw.githubusercontent.com` and cached at `data/rag_corpus/messy_source_changelog.md` (the
+  first 900 lines as of this repo's build date, 2026-08-12). License: MIT (per that
+  repository's own `README.md`/`LICENSE`).
+- **PubMedQA** (optional, not executed in this build — see below) — Jin, Q., Dhingra, B., Liu,
+  Z., Cohen, W. W., & Lu, X. (2019). "PubMedQA: A Dataset for Biomedical Research Question
+  Answering." arXiv:1909.06146. https://arxiv.org/abs/1909.06146. License: MIT.
+- **BEIR** (optional, not executed in this build — see below) — Thakur, N., Reimers, N.,
+  Rücklé, A., Srivastava, A., & Gurevych, I. (2021). "BEIR: A Heterogeneous Benchmark for
+  Zero-shot Evaluation of Information Retrieval Models." *NeurIPS 2021 Datasets and
+  Benchmarks Track*. arXiv:2104.08663. https://arxiv.org/abs/2104.08663.
+- PubMedQA and BEIR are both Hugging-Face-hosted and were therefore **not runnable in this
+  build environment** either — per spec, both are optional "further practice" pointers, not
+  required chapter content, so `curriculum/03_rag_evaluation.ipynb` mentions them in its
+  closing cell without an executed code cell. A learner with normal Hugging Face access can
+  run them directly via `datasets.load_dataset(...)`.
+- (GH Archive, used in Chapter 7, will be cited here once Unit 8 is built — it hits the same
+  Hugging Face reachability issue and is noted in `PROGRESS.md` for that session.)
 
 ## Chapter 1 — Fundamentals of AI Agents
 
@@ -69,8 +99,41 @@ internal loop in this chapter's build section — not re-cited here.)
 
 ## Chapter 3 — RAG and Retrieval Evaluation
 
-*(Populated in Unit 4 — RAG, TF-IDF, embeddings, FAISS, RAGAS, IR-metrics textbook, Chroma/
-DeepEval, plus the datasets listed above.)*
+- Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., Küttler, H.,
+  Lewis, M., Yih, W., Rocktäschel, T., Riedel, S., & Kiela, D. (2020). "Retrieval-Augmented
+  Generation for Knowledge-Intensive NLP Tasks." *NeurIPS 2020*. arXiv:2005.11401.
+  https://arxiv.org/abs/2005.11401.
+- Spärck Jones, K. (1972). "A Statistical Interpretation of Term Specificity and Its
+  Application in Retrieval." *Journal of Documentation*, 28(1), 11–21.
+  DOI: 10.1108/eb026526.
+- Mikolov, T., Chen, K., Corrado, G., & Dean, J. (2013). "Efficient Estimation of Word
+  Representations in Vector Space." arXiv:1301.3781. https://arxiv.org/abs/1301.3781.
+- Johnson, J., Douze, M., & Jégou, H. (2017). "Billion-Scale Similarity Search with GPUs."
+  arXiv:1702.08734. https://arxiv.org/abs/1702.08734. (FAISS.)
+- Es, S., James, J., Espinosa Anke, L., & Schockaert, S. (2024). "RAGAs: Automated
+  Evaluation of Retrieval Augmented Generation." *Proceedings of the 18th Conference of the
+  European Chapter of the Association for Computational Linguistics: System Demonstrations*
+  (EACL 2024), 150–158. https://aclanthology.org/2024.eacl-demo.16/. (Preferred over the
+  arXiv preprint, arXiv:2309.15217, per this repo's citation convention of citing the
+  peer-reviewed venue when one exists.)
+- Manning, C. D., Raghavan, P., & Schütze, H. (2008). *Introduction to Information
+  Retrieval*. Cambridge University Press. (Textbook reference for the precision/recall/MRR
+  definitions used throughout this chapter — a standard reference, not a single paper.)
+- Chroma — project documentation/GitHub, https://www.trychroma.com/ and
+  https://github.com/chroma-core/chroma. No canonical paper; cited as the alternative local
+  vector store this chapter's concept section names (this course's runnable example uses
+  FAISS instead — see `PROGRESS.md`'s Unit 1 notes for why).
+- DeepEval — project documentation/GitHub, https://github.com/confident-ai/deepeval. No
+  canonical paper; cited for its pytest-style RAG-testing interface, mentioned alongside
+  RAGAS in this chapter's "mapping to real tooling" section.
+- spaCy — project documentation, https://spacy.io/, and the `en_core_web_md` model
+  specifically, https://github.com/explosion/spacy-models. No canonical paper for the
+  library; cited here as this chapter's local-embeddings implementation (a build-environment
+  -driven substitution for the spec's originally-suggested `sentence-transformers` — see
+  `requirements.txt`'s comment and `PROGRESS.md`'s Unit 4 notes for the full reasoning).
+- `anthropic-sdk-python` `CHANGELOG.md` — see the Datasets section above for the full
+  citation of this chapter's messy real-world ingestion source.
+- SQuAD — see the Datasets section above.
 
 ## Chapter 4 — Production Reliability
 
