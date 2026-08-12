@@ -158,3 +158,46 @@ def load_messy_corpus() -> str:
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
     MESSY_CORPUS_CACHE_PATH.write_text(text)
     return text
+
+
+_REQUEST_LOG_MODELS = ["haiku", "sonnet"]
+_REQUEST_LOG_MODEL_WEIGHTS = [0.7, 0.3]
+
+
+def generate_request_log(n_requests: int = 500, seed: int = 42) -> list[dict]:
+    """Synthetic request log for Chapter 5: timestamp, model, input/output tokens, a
+    four-stage latency breakdown (queue/network/inference/generation), and queue depth at
+    request time. Poisson-process arrivals (exponential inter-arrival times) and log-normal
+    token counts -- standard choices for modeling real request traffic. Seeded for
+    reproducibility; ~1.7s average total latency by construction, used as this chapter's
+    "normal" baseline before any break-it scenario is injected."""
+    rng = random.Random(seed)
+    logs = []
+    t = 0.0
+    for i in range(n_requests):
+        t += rng.expovariate(1 / 2.0)  # ~1 request every 2s on average
+        model = rng.choices(_REQUEST_LOG_MODELS, weights=_REQUEST_LOG_MODEL_WEIGHTS)[0]
+        input_tokens = max(1, int(rng.lognormvariate(6.0, 0.6)))
+        output_tokens = max(1, int(rng.lognormvariate(4.8, 0.5)))
+        queue_depth = max(0, round(rng.gauss(2, 1.5)))
+
+        queue_time_ms = queue_depth * rng.uniform(20, 60)
+        network_time_ms = rng.uniform(10, 40)
+        inference_time_ms = input_tokens * rng.uniform(0.1, 0.25)  # prefill: fast per token
+        generation_time_ms = output_tokens * rng.uniform(8, 15)  # decode: slower per token
+        total_latency_ms = queue_time_ms + network_time_ms + inference_time_ms + generation_time_ms
+
+        logs.append({
+            "request_id": f"req-{i:05d}",
+            "timestamp": round(t, 2),
+            "model": model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "queue_depth": queue_depth,
+            "queue_time_ms": round(queue_time_ms, 1),
+            "network_time_ms": round(network_time_ms, 1),
+            "inference_time_ms": round(inference_time_ms, 1),
+            "generation_time_ms": round(generation_time_ms, 1),
+            "total_latency_ms": round(total_latency_ms, 1),
+        })
+    return logs

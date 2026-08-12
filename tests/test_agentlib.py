@@ -216,3 +216,28 @@ def test_load_messy_corpus_from_cache_is_nonempty_text():
     text = synthetic_data.load_messy_corpus()
     assert isinstance(text, str)
     assert len(text) > 500
+
+
+def test_generate_request_log_is_deterministic_and_well_formed():
+    log_1 = synthetic_data.generate_request_log(n_requests=50, seed=42)
+    log_2 = synthetic_data.generate_request_log(n_requests=50, seed=42)
+    assert log_1 == log_2
+    assert len(log_1) == 50
+
+    required_fields = {
+        "request_id", "timestamp", "model", "input_tokens", "output_tokens",
+        "queue_depth", "queue_time_ms", "network_time_ms", "inference_time_ms",
+        "generation_time_ms", "total_latency_ms",
+    }
+    for row in log_1:
+        assert required_fields.issubset(row.keys())
+        assert row["input_tokens"] > 0
+        assert row["output_tokens"] > 0
+        stage_sum = (
+            row["queue_time_ms"] + row["network_time_ms"]
+            + row["inference_time_ms"] + row["generation_time_ms"]
+        )
+        assert abs(stage_sum - row["total_latency_ms"]) < 0.3  # 4 independently-rounded components
+
+    timestamps = [row["timestamp"] for row in log_1]
+    assert timestamps == sorted(timestamps)

@@ -27,7 +27,7 @@ and do not do more than one unit per session even with budget left over.
       SQuAD 1.1 and a real messy-document source; fills in the Datasets + Chapter 3 sections
       of `REFERENCES.md`.
 - [x] **Unit 5 — Chapter 4: Production Reliability.** Notebook + solutions file.
-- [ ] **Unit 6 — Chapter 5: Cost, Performance, and Model Selection.** Notebook + solutions
+- [x] **Unit 6 — Chapter 5: Cost, Performance, and Model Selection.** Notebook + solutions
       file.
 - [ ] **Unit 7 — Chapter 6: Security and Safeguards.** Notebook + solutions file.
       Responsible-use note must be the first cell.
@@ -285,12 +285,70 @@ found per source:**
   breakers, Brooker's *Exponential Backoff and Jitter* for the retry jitter component), both
   verified via live search.
 
-**Next unit:** Unit 6 — Chapter 5 notebook
-(`curriculum/05_cost_performance_model_selection.ipynb`) and
-`solutions/ch05_cost_performance_model_selection_answers.md`. Per Unit 3's and Unit 4's
-notes, this is where real `tiktoken` tokenization is supposed to be introduced — the
-`openaipublic.blob.core.windows.net` host `tiktoken.get_encoding()` needs is blocked the same
-way `huggingface.co` and `sec.gov` are in this build environment, so that session should
-check reachability early and design a robust fallback (a try/except to an approximate
-counter, clearly labeled, following the same pattern already established for other
-network-dependent pieces) rather than assume it will work.
+## Notes from Unit 6
+
+- **Solved the `tiktoken` network block properly, not just with a fallback.** As flagged at
+  the end of Unit 5, `tiktoken.get_encoding("cl100k_base")` needs
+  `openaipublic.blob.core.windows.net`, which this build environment cannot reach — same
+  class of block as Hugging Face and SEC EDGAR. Rather than fall back to an approximate
+  word-count proxy (the plan sketched at the end of Unit 5), found a strictly better fix: a
+  community-mirrored copy of the exact canonical `cl100k_base` vocabulary file is reachable
+  on GitHub. Fetched it, verified it byte-for-byte via SHA-256 against the hash `tiktoken`'s
+  own source code checks for at load time (match confirmed), and vendored it into
+  `data/tiktoken_cache/` under the filename `tiktoken` itself expects
+  (`hashlib.sha1(url.encode()).hexdigest()` of the real blob URL), then set
+  `TIKTOKEN_CACHE_DIR` to that directory before calling `tiktoken.get_encoding()`. The result
+  is genuine, real `cl100k_base` tokenization with zero network calls and zero approximation
+  — `tiktoken` cannot tell the difference between this and a live fetch. Full verification
+  steps are in `curriculum/05_cost_performance_model_selection.ipynb`'s setup section.
+- **`agentlib/synthetic_data.py` extended with `generate_request_log()`** — Poisson arrivals
+  (`expovariate`), log-normal token counts, a four-stage latency breakdown (queue/network/
+  inference/generation), seeded and deterministic. Tuned the model-mix weights (70% haiku /
+  30% sonnet) and per-token latency rates so the unmodified log's average total latency lands
+  around ~1.7s — close enough to the spec's "~2s" framing that the break-it scenarios read
+  naturally against it without needing to be tuned separately.
+- **Caught two real bugs via actual output inspection, not just green tests:**
+  1. A floating-point tolerance bug in the new `test_generate_request_log_...` test —
+     asserting `abs(stage_sum - total_latency_ms) < 0.1` fails intermittently because four
+     independently-rounded-to-1-decimal stage values can accumulate up to ~0.2 of rounding
+     error; loosened to `< 0.3` with an inline comment explaining why, rather than rounding
+     differently and changing the log's realistic-looking precision.
+  2. A markdown claim in the tokenization-quirks section asserted "long runs of whitespace
+     still cost real tokens," written before checking real output — the actual baked-in
+     `tiktoken` output shows a whitespace-only test string collapsing into exactly **one**
+     token. Corrected the markdown to describe this accurately as a genuine `cl100k_base`
+     property (efficient whitespace merges, useful for indented code), contrasted with GPT-2's
+     older, per-space tokenization — a more interesting and more correct fact than the
+     original assumption.
+  3. Break-it #3 (queueing spike)'s first pass used a queue-time-per-depth-unit multiplier
+     that only reached ~3.9s peak latency against a ~1.7s baseline — real, working code, but
+     it didn't match the chapter's own "2s → 12s" interview-question framing quoted right next
+     to it. Recomputed the needed multiplier from the actual per-request generation-time
+     values in the log (rather than guessing again) and retuned it; the baked-in output now
+     shows baseline ~1.7s and peak ~12.4s, genuinely matching the framing instead of just
+     being in the right direction.
+- **Verified the duplicate-call scenario's diagnostic signal at the aggregate level, not just
+  by eyeballing the printed slice** — individual doubled requests can still land inside the
+  normal log-normal token range purely by chance (real variance, not a scenario flaw), so
+  confirmed separately that the injected slice's *mean* input token count is ~2.01x the
+  surrounding baseline's mean, matching the 2x bug by construction and giving a clean signal
+  even though a few individual printed rows don't visually pop out on their own.
+- **Verification:** `pytest --nbmake` on the finished notebook alone passed at each of the
+  six build stages (setup; request log + tokenization + latency profiler; break-it #1/#2;
+  break-it #3; optimization + fine-tuning concept; interview drill + recap) before moving to
+  the next; full-suite `pytest --nbmake` across all 13 notebooks plus `tests/` also passed.
+  25 `agentlib` unit tests total (up from 23 — the two new `generate_request_log` tests from
+  Unit 5's tail end are included in that count, not added again here). Notebook executed in
+  place after every stage so the committed version shows real output throughout, including
+  the corrected ~1.7s → ~12.4s latency numbers and the real `cl100k_base` tokenization quirks.
+- `REFERENCES.md`'s Chapter 5 section is filled in — `tiktoken` (with the offline-cache
+  access note), Hu et al. 2021 (LoRA), Dettmers et al. 2023 (QLoRA), Christiano et al. 2017
+  (the foundational RLHF paper), and Ouyang et al. 2022 (InstructGPT, RLHF at instruction-
+  following scale) — all verified via live search at build time.
+
+**Next unit:** Unit 7 — Chapter 6 notebook (`curriculum/06_security_safeguards.ipynb`) and
+`solutions/ch06_security_safeguards_answers.md`. Per spec, a responsible-use note must be the
+first cell. No known environment-reachability risk identified yet for this chapter's planned
+sources (OpenClaw security guidance, indirect prompt injection material) — should still be
+checked early in that session per the pattern established in Units 3-6, since new
+network-blocking surprises have shown up in most chapters so far.

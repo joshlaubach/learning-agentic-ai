@@ -150,7 +150,36 @@ internal loop in this chapter's build section — not re-cited here.)
 
 ## Chapter 5 — Cost, Performance, and Model Selection
 
-*(Populated in Unit 6 — tiktoken, LoRA, QLoRA, RLHF, optional real-traffic-trace sources.)*
+- `tiktoken` — OpenAI's BPE tokenizer library, https://github.com/openai/tiktoken. No
+  canonical paper; cited for the real `cl100k_base` tokenization this chapter runs against
+  the request log (word counts, token-vs-word quirks, whitespace-merge behavior). **Access
+  note:** `tiktoken.get_encoding("cl100k_base")` normally fetches its vocabulary file from
+  `openaipublic.blob.core.windows.net` on first use, which this build environment cannot
+  reach (same class of block as Hugging Face and SEC EDGAR). Rather than approximate token
+  counts, this repo vendors a hash-verified copy of that exact vocabulary file at
+  `data/tiktoken_cache/`, pre-seeded into `tiktoken`'s own local cache directory — verified
+  via SHA-256 hash match against the hash tiktoken's own source checks for at fetch time. See
+  `PROGRESS.md`'s Unit 6 notes for the full verification steps.
+- Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., & Chen, W.
+  (2021). "LoRA: Low-Rank Adaptation of Large Language Models." arXiv:2106.09685.
+  https://arxiv.org/abs/2106.09685. Cited for this chapter's conceptual (no-training)
+  explanation of low-rank adapter fine-tuning.
+- Dettmers, T., Pagnoni, A., Holtzman, A., & Zettlemoyer, L. (2023). "QLoRA: Efficient
+  Finetuning of Quantized LLMs." *NeurIPS 2023* (Oral). arXiv:2305.14314.
+  https://arxiv.org/abs/2305.14314. Cited for 4-bit quantized-base-model fine-tuning, this
+  chapter's explanation of why QLoRA lowers the GPU-memory bar for fine-tuning further than
+  LoRA alone.
+- Christiano, P. F., Leike, J., Brown, T., Martic, M., Legg, S., & Amodei, D. (2017). "Deep
+  Reinforcement Learning from Human Preferences." *NeurIPS 2017*, Vol. 30. arXiv:1706.03741.
+  https://arxiv.org/abs/1706.03741. The foundational RLHF paper cited for this chapter's
+  RLHF explanation and its connection to Chapter 3's judge-based evaluation pattern.
+- Ouyang, L., Wu, J., Jiang, X., Almeida, D., Wainwright, C. L., Mishkin, P., Zhang, C.,
+  Agarwal, S., Slama, K., Ray, A., Schulman, J., Hilton, J., Kelton, F., Miller, L., Simens,
+  M., Askell, A., Welinder, P., Christiano, P., Leike, J., & Lowe, R. (2022). "Training
+  Language Models to Follow Instructions with Human Feedback." *NeurIPS 2022*.
+  arXiv:2203.02155. https://arxiv.org/abs/2203.02155. (InstructGPT.) Cited for RLHF applied
+  to instruction-following at production LLM scale, distinct from Christiano et al.'s
+  original RL-control-tasks setting.
 
 ## Chapter 6 — Security and Safeguards
 
