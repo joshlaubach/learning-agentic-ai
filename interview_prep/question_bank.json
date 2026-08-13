@@ -1,0 +1,1464 @@
+[
+  {
+    "id": "loop-001",
+    "chapter": 1,
+    "category": "Agent loops and control flow",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "Your AI agent keeps looping forever.",
+    "follow_up": "How would you detect and stop infinite reasoning loops?",
+    "key_concepts": [
+      "max-iteration guard",
+      "duplicate-observation detection",
+      "semantic cycle detection"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "loop-002",
+    "chapter": 1,
+    "category": "Agent loops and control flow",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "A teammate is building their first tool-using agent and hasn't added any loop protection yet.",
+    "follow_up": "What's the one safeguard you'd insist on before this ships, even before anything cleverer?",
+    "key_concepts": [
+      "max-iteration guard",
+      "hard iteration cap"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "loop-003",
+    "chapter": 1,
+    "category": "Agent loops and control flow",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #on-call: \"hey \u2014 our support agent has been running on one ticket for 40 min and burned about $30 in API calls, can someone take a look\"",
+    "follow_up": "What's the first thing you check, and what's the cheapest fix you could ship today?",
+    "key_concepts": [
+      "max-iteration guard",
+      "cost monitoring",
+      "duplicate-observation detection"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "loop-004",
+    "chapter": 1,
+    "category": "Agent loops and control flow",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"Why did we get billed for over 200 model calls on a single customer request?\" your finance lead asks, forwarding an anomalous usage report.",
+    "follow_up": "Walk them through what likely happened and what you'd change to stop it recurring.",
+    "key_concepts": [
+      "loop detection",
+      "cost/latency",
+      "max-iteration guard"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "loop-005",
+    "chapter": 1,
+    "category": "Agent loops and control flow",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "Two agents in a supervisor-worker setup keep re-delegating the same subtask back and forth, each one technically doing \"something\" every turn, without ever making real progress.",
+    "follow_up": "Is a simple iteration cap enough here, or do you need something else? Why?",
+    "key_concepts": [
+      "semantic cycle detection",
+      "duplicate-observation detection",
+      "hash-based vs. semantic guards"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "loop-006",
+    "chapter": 1,
+    "category": "Agent loops and control flow",
+    "difficulty": "senior",
+    "format": "question_first",
+    "scenario": "An agent's loop guard hashes and compares its own prior outputs exactly, looking for repeats \u2014 and the agent is still stuck in a loop.",
+    "follow_up": "Why might exact-match detection miss this, and what would you change?",
+    "key_concepts": [
+      "semantic cycle detection",
+      "limits of hash-based cycle detection"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "loop-007",
+    "chapter": 1,
+    "category": "Agent fundamentals",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "A product manager asks whether a new feature \u2014 summarizing a document into three bullet points \u2014 should be \"an agent.\"",
+    "follow_up": "How do you answer, and what's the actual test you'd apply?",
+    "key_concepts": [
+      "chatbot vs. workflow vs. agent",
+      "single-step vs. multi-step decision-making"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "loop-008",
+    "chapter": 1,
+    "category": "Agent fundamentals",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "You're asked to implement the ReAct pattern from scratch for a take-home assignment, no framework allowed.",
+    "follow_up": "What are the three steps in the loop, and what does each one actually do?",
+    "key_concepts": [
+      "ReAct",
+      "Thought",
+      "Action",
+      "Observation"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "loop-009",
+    "chapter": 1,
+    "category": "Agent fundamentals",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #eng: \"can we just skip the whole agent thing and hardcode a decision tree for this? feels like overkill\"",
+    "follow_up": "When would you agree with them, and when would you push back?",
+    "key_concepts": [
+      "when NOT to use an agent",
+      "deterministic vs. probabilistic control flow"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "agents-001",
+    "chapter": 2,
+    "category": "Multi-agent architecture",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "Your multi-agent workflow is slower than a single agent.",
+    "follow_up": "When is adding more agents actually a bad architectural decision?",
+    "key_concepts": [
+      "coordination overhead",
+      "context isolation",
+      "supervisor-worker pattern"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "agents-002",
+    "chapter": 2,
+    "category": "Multi-agent architecture",
+    "difficulty": "senior",
+    "format": "question_first",
+    "scenario": "A team splits a task across three agents, each handling one-third, expecting a 3x speedup.",
+    "follow_up": "Why might they not get anywhere near 3x, even if each agent individually runs fast?",
+    "key_concepts": [
+      "coordination overhead",
+      "synthesis cost",
+      "context isolation tradeoffs"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "agents-003",
+    "chapter": 2,
+    "category": "Multi-agent architecture",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #arch-review: \"latency on the new 4-agent pipeline is 3x our old single-agent version, but everyone says multi-agent is the modern way to do this, help\"",
+    "follow_up": "What would you actually check before deciding whether to keep or cut agents?",
+    "key_concepts": [
+      "tracing per-hop latency",
+      "supervisor-worker pattern",
+      "unnecessary hops"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "agents-004",
+    "chapter": 2,
+    "category": "Multi-agent architecture",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"We spent a quarter building a five-agent pipeline and it's not measurably better than the single-agent version it replaced,\" your engineering director says in a retro.",
+    "follow_up": "What questions would you have asked before that project started that might have caught this?",
+    "key_concepts": [
+      "when NOT to use multi-agent",
+      "architectural judgment",
+      "coordination overhead"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "agents-005",
+    "chapter": 2,
+    "category": "Multi-agent architecture",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "A subagent returns its entire raw working transcript \u2014 every tool call, every intermediate thought \u2014 back to the orchestrator instead of a summary.",
+    "follow_up": "What's this actually costing you, beyond just extra tokens?",
+    "key_concepts": [
+      "context isolation",
+      "leaky subagents",
+      "compressed synthesis vs. leaky return"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "agents-006",
+    "chapter": 2,
+    "category": "Multi-agent architecture",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "You're deciding between one agent with five tools versus five specialized single-tool agents coordinated by a supervisor.",
+    "follow_up": "What would actually push you toward the multi-agent version, specifically?",
+    "key_concepts": [
+      "supervisor-worker pattern",
+      "context isolation",
+      "specialization tradeoffs"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "agents-007",
+    "chapter": 2,
+    "category": "Agent control flow",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "You need an agent that follows the exact same five steps in the exact same order for every single request, with no variation.",
+    "follow_up": "Would you reach for ReAct, plan-and-execute, or something else? Why?",
+    "key_concepts": [
+      "ReAct vs. plan-and-execute",
+      "fixed workflow vs. dynamic reasoning"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "agents-008",
+    "chapter": 2,
+    "category": "Agent control flow",
+    "difficulty": "senior",
+    "format": "slack_message",
+    "scenario": "Slack, #incident: \"Jack and Mike's agents have been passing the same task back and forth for 6 rounds now and nobody's noticed until the bill came in\"",
+    "follow_up": "What guard should have caught this, and why didn't the obvious one work?",
+    "key_concepts": [
+      "semantic cycle detection",
+      "hash-based cycle detection limits",
+      "multi-agent loops"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "agents-009",
+    "chapter": 2,
+    "category": "Agent control flow",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "An interviewer wants to know if you actually understand subagent isolation, not just the term.",
+    "follow_up": "What specifically does a subagent's context isolation protect the orchestrator from, mechanically?",
+    "key_concepts": [
+      "context isolation",
+      "subagent patterns",
+      "compressed synthesis"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "rag-001",
+    "chapter": 3,
+    "category": "RAG evaluation",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "Your RAG system returns confident but wrong answers.",
+    "follow_up": "Which metric tells you whether retrieval or generation is failing?",
+    "key_concepts": [
+      "faithfulness",
+      "recall@k",
+      "groundedness"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "rag-002",
+    "chapter": 3,
+    "category": "RAG evaluation",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "A RAG-backed support bot cites a document but the fact it states isn't actually in that document.",
+    "follow_up": "Is this a retrieval bug or a generation bug, and how would you tell which?",
+    "key_concepts": [
+      "faithfulness",
+      "groundedness",
+      "retrieval vs. generation failure"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "rag-003",
+    "chapter": 3,
+    "category": "RAG evaluation",
+    "difficulty": "senior",
+    "format": "slack_message",
+    "scenario": "Slack, #ml-eval: \"recall@5 looks great on our eval set but customers keep reporting wrong answers, I don't get it\"",
+    "follow_up": "What's the gap between recall@5 looking good and answers still being wrong?",
+    "key_concepts": [
+      "recall@k measures retrieval only",
+      "faithfulness scoring",
+      "generation-stage failure"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "rag-004",
+    "chapter": 3,
+    "category": "RAG evaluation",
+    "difficulty": "junior",
+    "format": "scenario_first",
+    "scenario": "A retrieval system returns the single most relevant document at rank 3, not rank 1.",
+    "follow_up": "How does that affect precision@1 versus MRR, and why might you care about one more than the other here?",
+    "key_concepts": [
+      "precision@k",
+      "mean reciprocal rank",
+      "rank-sensitive metrics"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "rag-005",
+    "chapter": 3,
+    "category": "RAG evaluation",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"We swapped in a bigger, more expensive embedding model and retrieval quality didn't budge,\" a colleague says.",
+    "follow_up": "What else, besides embedding quality, could be the actual bottleneck?",
+    "key_concepts": [
+      "chunking strategy",
+      "corpus quality",
+      "near-duplicate documents",
+      "confusable content"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "rag-006",
+    "chapter": 3,
+    "category": "RAG evaluation",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "A team is deciding what to log when a RAG answer turns out to be wrong.",
+    "follow_up": "What would you want captured in the log to actually distinguish a retrieval failure from a generation failure after the fact?",
+    "key_concepts": [
+      "faithfulness scoring",
+      "retrieved-context logging",
+      "debuggability"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "hallu-001",
+    "chapter": 3,
+    "category": "Explaining hallucination",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "The CEO asks why your AI hallucinates despite using RAG.",
+    "follow_up": "How would you explain hallucinations to a non-technical stakeholder?",
+    "key_concepts": [
+      "hallucination",
+      "RAG reduces but doesn't eliminate hallucination",
+      "faithfulness"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "hallu-002",
+    "chapter": 3,
+    "category": "Explaining hallucination",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"I thought RAG was supposed to fix hallucinations \u2014 why is it still making things up?\" a VP asks after a demo goes wrong.",
+    "follow_up": "How do you correct that misconception without sounding like you're making excuses?",
+    "key_concepts": [
+      "RAG reduces but doesn't eliminate hallucination",
+      "faithfulness",
+      "generation-stage failure"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "hallu-003",
+    "chapter": 3,
+    "category": "Explaining hallucination",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "A journalist writing about your product asks a plain-language question.",
+    "follow_up": "In one or two sentences with no jargon, why does a language model ever state something false with total confidence?",
+    "key_concepts": [
+      "hallucination",
+      "next-token prediction",
+      "no built-in truth-checking"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "hallu-004",
+    "chapter": 3,
+    "category": "Explaining hallucination",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "In 2024, the British Columbia Civil Resolution Tribunal held Air Canada liable after its website chatbot gave a customer incorrect information about the airline's bereavement fare policy, and the airline unsuccessfully argued the chatbot was responsible for its own statements.",
+    "follow_up": "As the engineer, what production safeguard would you point to as the actual fix here, and what would you tell leadership about accountability for chatbot output?",
+    "key_concepts": [
+      "hallucination has real business/legal consequences",
+      "faithfulness checking before serving an answer",
+      "you own what your chatbot says"
+    ],
+    "grounded_in_real_incident": true,
+    "source_note": "Moffatt v. Air Canada, 2024 BCCRT 149 (B.C. Civil Resolution Tribunal, Feb. 14, 2024); see also CBC News coverage, https://www.cbc.ca/news/canada/british-columbia/air-canada-chatbot-lawsuit-1.7116416"
+  },
+  {
+    "id": "hallu-005",
+    "chapter": 3,
+    "category": "Explaining hallucination",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "In 2023, lawyers in a real U.S. federal lawsuit submitted a legal brief citing several court cases that turned out not to exist \u2014 invented by an LLM they'd used for research and never checked against a real source.",
+    "follow_up": "What does this incident actually demonstrate about hallucination risk, and what's the general lesson for any AI-assisted workflow with high-stakes output?",
+    "key_concepts": [
+      "hallucination can fabricate plausible-looking specifics",
+      "always verify against primary sources",
+      "high-stakes output needs a human-verification gate"
+    ],
+    "grounded_in_real_incident": true,
+    "source_note": "Mata v. Avianca, Inc., 678 F. Supp. 3d 443 (S.D.N.Y. 2023); see Wikipedia summary, https://en.wikipedia.org/wiki/Mata_v._Avianca,_Inc."
+  },
+  {
+    "id": "hallu-006",
+    "chapter": 3,
+    "category": "Explaining hallucination",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #product: \"can we just tell users 'the AI is never wrong about X' for the launch page, marketing wants a clean message\"",
+    "follow_up": "How would you push back on that framing, and what would you suggest instead?",
+    "key_concepts": [
+      "hallucination is not fully eliminable",
+      "honest communication about model limitations",
+      "faithfulness as a mitigation, not a guarantee"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "evalgap-001",
+    "chapter": 3,
+    "category": "Offline vs. online evaluation",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "Your evaluation score improved, but user satisfaction dropped.",
+    "follow_up": "Which online metrics matter more than offline benchmarks?",
+    "key_concepts": [
+      "offline vs. online metrics",
+      "proxy metric divergence",
+      "user satisfaction signals"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "evalgap-002",
+    "chapter": 3,
+    "category": "Offline vs. online evaluation",
+    "difficulty": "senior",
+    "format": "question_first",
+    "scenario": "A retrieval change wins on every offline metric you track (precision@k, recall@k, MRR) in an A/B comparison.",
+    "follow_up": "What would make you hesitate to ship it anyway?",
+    "key_concepts": [
+      "offline metrics can diverge from real user outcomes",
+      "simulated vs. real satisfaction signals"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "evalgap-003",
+    "chapter": 3,
+    "category": "Offline vs. online evaluation",
+    "difficulty": "mid",
+    "format": "stakeholder_quote",
+    "scenario": "\"Our internal benchmark says the new model is strictly better, why are support tickets about wrong answers going up?\" a PM asks.",
+    "follow_up": "What's your hypothesis for the gap, and how would you go test it?",
+    "key_concepts": [
+      "benchmark overfitting",
+      "distribution mismatch between eval set and real traffic",
+      "online monitoring"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "evalgap-004",
+    "chapter": 3,
+    "category": "Offline vs. online evaluation",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #ml-eval: \"our eval set is basically the same 50 questions we wrote a year ago, is that still fine to gate releases on?\"",
+    "follow_up": "What's the risk of an eval set that never changes, specifically?",
+    "key_concepts": [
+      "eval set staleness",
+      "distribution drift",
+      "offline benchmark limitations"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "evalgap-005",
+    "chapter": 3,
+    "category": "Offline vs. online evaluation",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "A junior engineer asks why you'd bother with online metrics at all if the offline eval suite already covers precision, recall, and faithfulness.",
+    "follow_up": "How do you answer?",
+    "key_concepts": [
+      "offline metrics are proxies, not the real goal",
+      "real user behavior as ground truth"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "evalgap-006",
+    "chapter": 3,
+    "category": "Offline vs. online evaluation",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "Two retrieval strategies are tied on every offline metric you have, but one of them is noticeably slower.",
+    "follow_up": "How does that change which one you'd actually ship, and what online signal would confirm you made the right call?",
+    "key_concepts": [
+      "latency as a real-world quality factor",
+      "online metrics beyond correctness",
+      "offline metrics don't capture everything"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-001",
+    "chapter": 4,
+    "category": "Production reliability",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "Users complain your AI coding assistant ignores recent code changes.",
+    "follow_up": "How would you debug context freshness in production?",
+    "key_concepts": [
+      "context freshness",
+      "cache invalidation",
+      "staleness logging"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-002",
+    "chapter": 4,
+    "category": "Production reliability",
+    "difficulty": "senior",
+    "format": "question_first",
+    "scenario": "A RAG-backed internal wiki assistant keeps citing a policy document that was updated three weeks ago, as if it were current.",
+    "follow_up": "What's your first hypothesis, and what would confirm it?",
+    "key_concepts": [
+      "cache invalidation on write",
+      "context freshness",
+      "stale index"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-003",
+    "chapter": 4,
+    "category": "Production reliability",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #support: \"customer says the assistant keeps referencing a function we deleted last week, is this a caching thing?\"",
+    "follow_up": "How do you confirm it's a caching issue versus something else, quickly?",
+    "key_concepts": [
+      "context age logging",
+      "cache vs. live fetch",
+      "context freshness"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-004",
+    "chapter": 4,
+    "category": "Production reliability",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"How do we even know if this is happening elsewhere in the product, not just the one case a customer reported?\" your PM asks after a staleness bug.",
+    "follow_up": "What would you add so staleness is detectable proactively instead of only via user complaints?",
+    "key_concepts": [
+      "context age logging as an observable signal",
+      "proactive vs. reactive detection"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-005",
+    "chapter": 4,
+    "category": "Production reliability",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "You shorten a cache's TTL from one hour to five minutes to reduce staleness complaints.",
+    "follow_up": "Does this actually fix the underlying bug, or just shrink the window? What's the real fix?",
+    "key_concepts": [
+      "TTL vs. invalidate-on-write",
+      "cache invalidation",
+      "shrinking vs. closing the staleness window"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-006",
+    "chapter": 4,
+    "category": "Production reliability",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "An intern asks why context freshness bugs are hard to catch in testing.",
+    "follow_up": "What's the honest answer?",
+    "key_concepts": [
+      "staleness only manifests after a write event",
+      "hard to reproduce without simulating time/updates"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-007",
+    "chapter": 4,
+    "category": "Reliability patterns",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "A downstream API your agent depends on is fully down for a scheduled 20-minute maintenance window.",
+    "follow_up": "Retry with backoff, or a circuit breaker? Justify the choice.",
+    "key_concepts": [
+      "circuit breaker",
+      "retry with backoff",
+      "known-down vs. transient failure"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-008",
+    "chapter": 4,
+    "category": "Reliability patterns",
+    "difficulty": "senior",
+    "format": "slack_message",
+    "scenario": "Slack, #infra: \"since we added retries everywhere, load on the payments service spikes hard whenever it has a bad minute, is retry actually making this worse?\"",
+    "follow_up": "What's likely happening, and what's the fix?",
+    "key_concepts": [
+      "thundering herd",
+      "jitter",
+      "exponential backoff"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-009",
+    "chapter": 4,
+    "category": "Reliability patterns",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "You're rate-limited by a real LLM API for the first time in production.",
+    "follow_up": "Walk through exactly what your code should do, step by step, when it gets a 429.",
+    "key_concepts": [
+      "exponential backoff",
+      "jitter",
+      "rate-limit handling"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "cost-001",
+    "chapter": 5,
+    "category": "Cost triage",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "GPU costs doubled after your latest release.",
+    "follow_up": "What optimizations would you try before adding more GPUs?",
+    "key_concepts": [
+      "duplicate-call bug",
+      "unbounded context growth",
+      "model routing",
+      "prompt caching"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "cost-002",
+    "chapter": 5,
+    "category": "Cost triage",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"Our cloud bill for inference tripled this month and nobody deployed anything new,\" your finance lead says, confused.",
+    "follow_up": "What would you check first, given that nothing was deployed?",
+    "key_concepts": [
+      "traffic volume vs. per-request cost",
+      "request log analysis",
+      "duplicate-call bug"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "cost-003",
+    "chapter": 5,
+    "category": "Cost triage",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #finops: \"per-request token usage looks totally normal in the dashboard, but the total bill is way up, what am I missing\"",
+    "follow_up": "What's a totally normal per-request average hiding?",
+    "key_concepts": [
+      "request volume growth vs. per-request cost",
+      "aggregate vs. per-request metrics"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "cost-004",
+    "chapter": 5,
+    "category": "Cost triage",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "A teammate proposes switching every request to the cheapest available model to cut costs immediately.",
+    "follow_up": "What's the risk in doing that without any other change?",
+    "key_concepts": [
+      "model routing by task complexity",
+      "quality regression risk",
+      "not a blanket downgrade"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "cost-005",
+    "chapter": 5,
+    "category": "Cost triage",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "A conversational agent's average input token count has been quietly climbing for weeks, session by session.",
+    "follow_up": "What's the likely root cause, and what's the fix?",
+    "key_concepts": [
+      "unbounded context growth",
+      "context window policy",
+      "conversation truncation/summarization"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "cost-006",
+    "chapter": 5,
+    "category": "Cost triage",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "You suspect a retry path is calling the model twice for some requests without anyone noticing.",
+    "follow_up": "How would you confirm that from a request log, specifically what would you look for?",
+    "key_concepts": [
+      "duplicate-call bug",
+      "idempotency",
+      "token-volume step change diagnostic signature"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "latency-001",
+    "chapter": 5,
+    "category": "Latency triage",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "Your LLM latency jumps from 2s to 12s.",
+    "follow_up": "What is the first thing you investigate?",
+    "key_concepts": [
+      "latency decomposition",
+      "queueing vs. inference vs. generation",
+      "queue depth"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "latency-002",
+    "chapter": 5,
+    "category": "Latency triage",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"Just add more GPUs, that always fixes latency,\" a director suggests after a p99 spike.",
+    "follow_up": "When is that actually right, and when is it a waste of money?",
+    "key_concepts": [
+      "queueing vs. inference bottleneck",
+      "latency decomposition",
+      "capacity vs. model-speed problem"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "latency-003",
+    "chapter": 5,
+    "category": "Latency triage",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #oncall: \"p99 latency is 6x normal since this morning, token counts per request look totally normal though\"",
+    "follow_up": "If token counts are normal, what's the most likely stage that's actually slow?",
+    "key_concepts": [
+      "queueing",
+      "latency decomposition ruling out inference/generation"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "latency-004",
+    "chapter": 5,
+    "category": "Latency triage",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "You're asked to name the four stages that make up a single request's end-to-end latency.",
+    "follow_up": "What are they, and which ones does model choice actually affect?",
+    "key_concepts": [
+      "queueing",
+      "network",
+      "inference (prefill)",
+      "generation (decode)"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "latency-005",
+    "chapter": 5,
+    "category": "Latency triage",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "A batch job that normally runs overnight got kicked off during peak daytime traffic by mistake.",
+    "follow_up": "What effect would you expect on user-facing latency, and why?",
+    "key_concepts": [
+      "queueing spike from concurrent load",
+      "backpressure",
+      "blast radius of shared capacity"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "latency-006",
+    "chapter": 5,
+    "category": "Latency triage",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "You want to distinguish \"the model is genuinely slower now\" from \"requests are just waiting longer to start.\"",
+    "follow_up": "What single piece of data would settle this fastest?",
+    "key_concepts": [
+      "queue_depth / queue_time_ms as a diagnostic signal",
+      "stage-level latency logging"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "security-001",
+    "chapter": 6,
+    "category": "Prompt injection and safeguards",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "A prompt causes your AI agent to expose confidential data.",
+    "follow_up": "What production safeguards should have prevented this?",
+    "key_concepts": [
+      "instruction/data separation",
+      "output filtering",
+      "least privilege",
+      "defense in depth"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "security-002",
+    "chapter": 6,
+    "category": "Prompt injection and safeguards",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "In December 2023, a customer testing a Chevrolet dealership's AI-powered chatbot used prompt injection to get it to \"agree\" that it would sell him a vehicle for one dollar, framed as a legally binding offer \u2014 the exchange went viral before the dealership shut the bot down.",
+    "follow_up": "What specific technical safeguard (not \"be more careful\") would have prevented the bot from ever producing that kind of output?",
+    "key_concepts": [
+      "direct prompt injection",
+      "tool/action scoping",
+      "output constraints",
+      "no binding commitments from an unguarded LLM"
+    ],
+    "grounded_in_real_incident": true,
+    "source_note": "Widely reported, e.g. Cybernews, https://cybernews.com/ai-news/chevrolet-dealership-chatbot-hack/ ; AI Incident Database, Incident 622, https://incidentdatabase.ai/cite/622/"
+  },
+  {
+    "id": "security-003",
+    "chapter": 6,
+    "category": "Prompt injection and safeguards",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "A support agent reads incoming customer tickets and has a tool that can issue refunds.",
+    "follow_up": "What's the single most important thing to check on every refund tool call, regardless of how the agent decided to make it?",
+    "key_concepts": [
+      "policy check independent of decision path",
+      "defense in depth",
+      "least privilege"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "security-004",
+    "chapter": 6,
+    "category": "Prompt injection and safeguards",
+    "difficulty": "senior",
+    "format": "slack_message",
+    "scenario": "Slack, #security: \"we added a system prompt line that says 'never reveal internal notes' but a user got the model to print them anyway, how\"",
+    "follow_up": "Why doesn't a strongly-worded instruction reliably stop this?",
+    "key_concepts": [
+      "mixed instruction/data channel",
+      "no structural separation in a prompt",
+      "output filtering as a backstop"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "security-005",
+    "chapter": 6,
+    "category": "Prompt injection and safeguards",
+    "difficulty": "mid",
+    "format": "stakeholder_quote",
+    "scenario": "\"Can't we just tell the model in the prompt to never do anything harmful, and call it solved?\" a less-technical stakeholder asks.",
+    "follow_up": "How do you explain why that's not sufficient, without being dismissive?",
+    "key_concepts": [
+      "defense in depth",
+      "no single mitigation is sufficient",
+      "instruction-following is not a hard guarantee"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "security-006",
+    "chapter": 6,
+    "category": "Prompt injection and safeguards",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "An agent has a single general-purpose `run_db_command(sql)` tool instead of several narrow, task-specific tools.",
+    "follow_up": "How does that change the consequences of a successful prompt injection, even if the injection itself isn't preventable?",
+    "key_concepts": [
+      "least privilege",
+      "blast radius",
+      "tool scoping"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "security-007",
+    "chapter": 6,
+    "category": "Prompt injection and safeguards",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "You're asked to define, precisely, the difference between direct and indirect prompt injection.",
+    "follow_up": "What's the difference, and why does it matter more once an agent has tools?",
+    "key_concepts": [
+      "direct vs. indirect prompt injection",
+      "untrusted retrieved content"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "security-008",
+    "chapter": 6,
+    "category": "Prompt injection and safeguards",
+    "difficulty": "junior",
+    "format": "scenario_first",
+    "scenario": "A teammate suggests output filtering alone (scanning every response for secret-shaped patterns before returning it) is a sufficient defense against data leaks.",
+    "follow_up": "What's the gap in relying on that alone?",
+    "key_concepts": [
+      "output filtering as a last-resort net, not the only layer",
+      "secrets shouldn't be reachable in context at all"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "security-009",
+    "chapter": 6,
+    "category": "Prompt injection and safeguards",
+    "difficulty": "senior",
+    "format": "slack_message",
+    "scenario": "Slack, #eng: \"security review flagged that our system prompt includes an internal API key as 'context the model needs' \u2014 is that actually a problem if we also tell it never to reveal it\"",
+    "follow_up": "How do you respond?",
+    "key_concepts": [
+      "secrets don't belong in a prompt at all",
+      "code/config boundary vs. model context",
+      "instruction is not a guarantee"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "tools-001",
+    "chapter": 7,
+    "category": "Tool failure taxonomy",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "An MCP tool suddenly starts returning invalid data.",
+    "follow_up": "Should the agent retry, switch tools, or ask the user for clarification?",
+    "key_concepts": [
+      "failure taxonomy",
+      "malformed vs. version-mismatch",
+      "schema validation"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "tools-002",
+    "chapter": 7,
+    "category": "Tool failure taxonomy",
+    "difficulty": "senior",
+    "format": "question_first",
+    "scenario": "A tool call returns a response that passes schema validation completely, but the data is about the wrong entity entirely.",
+    "follow_up": "Which of the four failure types is this, and why can't schema validation alone catch it?",
+    "key_concepts": [
+      "semantically wrong failure type",
+      "schema validates shape not truth"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "tools-003",
+    "chapter": 7,
+    "category": "Tool failure taxonomy",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #platform: \"third-party API we depend on changed a field name without bumping their version number, half our integration is now silently broken\"",
+    "follow_up": "What should have caught this automatically, before a user reported it?",
+    "key_concepts": [
+      "version mismatch",
+      "continuous schema validation",
+      "ask-user/developer escalation"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "tools-004",
+    "chapter": 7,
+    "category": "Tool failure taxonomy",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"Just retry every tool failure three times, that's simple and covers us,\" a teammate proposes as the universal error-handling policy.",
+    "follow_up": "Where specifically does this policy fail, using a real example?",
+    "key_concepts": [
+      "retry doesn't fix malformed/semantic/version-mismatch failures",
+      "failure taxonomy"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "tools-005",
+    "chapter": 7,
+    "category": "Tool failure taxonomy",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "A tool call times out once, then succeeds on a second identical attempt a moment later.",
+    "follow_up": "Which failure type was this, and what's the appropriate response?",
+    "key_concepts": [
+      "transient failure",
+      "retry with backoff"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "tools-006",
+    "chapter": 7,
+    "category": "Tool failure taxonomy",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "A required field is simply missing from a tool's response \u2014 not the wrong type, just absent entirely.",
+    "follow_up": "Is this malformed or version-mismatch, and how would you tell the difference in general?",
+    "key_concepts": [
+      "missing field vs. wrong-type field",
+      "version mismatch signature"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "tools-007",
+    "chapter": 7,
+    "category": "MCP and tool integration",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "A candidate says \"MCP is basically just a wrapper around REST APIs.\"",
+    "follow_up": "What's actually different about it, and why does that difference matter?",
+    "key_concepts": [
+      "standardized client-server protocol",
+      "M\u00d7N vs. M+N integration problem"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "tools-008",
+    "chapter": 7,
+    "category": "MCP and tool integration",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "You're designing a new internal tool for an agent and deciding how strictly to validate its inputs and outputs.",
+    "follow_up": "What's the argument for treating a tool's schema as an enforced contract rather than a documentation convenience?",
+    "key_concepts": [
+      "schema validation as an enforced contract",
+      "Pydantic-style validation"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "tools-009",
+    "chapter": 7,
+    "category": "MCP and tool integration",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #agents: \"our agent's error handling is just one giant except Exception: log and move on, is that actually bad?\"",
+    "follow_up": "Why, specifically, is that worse than it sounds?",
+    "key_concepts": [
+      "generic error handling masks distinct failure types",
+      "failure taxonomy needs distinct responses"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "design-001",
+    "chapter": 8,
+    "category": "System design judgment",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "\"Design an agent that monitors customer support tickets and automatically resolves the simple ones\" \u2014 cold, no other context given.",
+    "follow_up": "What are the first three things you'd establish before proposing any architecture at all?",
+    "key_concepts": [
+      "failure cost before architecture",
+      "does this need an agent",
+      "success criteria"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "design-002",
+    "chapter": 8,
+    "category": "System design judgment",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "A stakeholder wants an agent added to a feature that's currently a fully deterministic, reliably-working pipeline with no LLM anywhere in it.",
+    "follow_up": "What single question do you ask before agreeing this is a good idea?",
+    "key_concepts": [
+      "when NOT to use an agent",
+      "does this need judgment under uncertainty"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "design-003",
+    "chapter": 8,
+    "category": "System design judgment",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"We built a five-question design doc process and it's slowing us down, can we just start coding?\" an engineer asks in a planning meeting.",
+    "follow_up": "How do you respond, and what's actually lost by skipping it?",
+    "key_concepts": [
+      "repeatable design framework value",
+      "premature architecture jump"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "design-004",
+    "chapter": 8,
+    "category": "System design judgment",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "Two candidate designs for the same feature score identically on every technical metric you can think of \u2014 latency, cost, accuracy.",
+    "follow_up": "What would you look at next to actually decide between them?",
+    "key_concepts": [
+      "failure cost asymmetry",
+      "security surface",
+      "operational/evaluation burden"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "design-005",
+    "chapter": 8,
+    "category": "System design judgment",
+    "difficulty": "senior",
+    "format": "slack_message",
+    "scenario": "Slack, #design-review: \"why does the refund agent need three layers of safeguards, isn't that overkill for one feature\"",
+    "follow_up": "How would you justify the layering without it sounding like reflexive best-practices box-checking?",
+    "key_concepts": [
+      "defense in depth justified per-layer",
+      "each layer answers a distinct failure mode"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "design-006",
+    "chapter": 8,
+    "category": "System design judgment",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "An interviewer is trying to distinguish a candidate who memorized best practices from one who actually has design judgment.",
+    "follow_up": "What follow-up question would expose the difference fastest?",
+    "key_concepts": [
+      "scenario-specific reasoning vs. checklist recitation",
+      "willingness to cut an unjustified layer"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "design-007",
+    "chapter": 8,
+    "category": "System design judgment",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "You're designing a system where a wrong action is expensive and hard to reverse (e.g. an automated infrastructure action), versus one where a wrong action just annoys a user for a moment (e.g. a chat response).",
+    "follow_up": "How does that difference change your control-flow and human-in-the-loop decisions?",
+    "key_concepts": [
+      "failure cost drives architecture",
+      "human-in-the-loop for high-stakes irreversible actions"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "design-008",
+    "chapter": 8,
+    "category": "System design judgment",
+    "difficulty": "mid",
+    "format": "stakeholder_quote",
+    "scenario": "\"Can we skip defining success metrics for now and just ship it, we'll figure out if it's working later?\" a PM suggests.",
+    "follow_up": "What's the actual risk in agreeing to that?",
+    "key_concepts": [
+      "evaluation plan before shipping",
+      "can't safely iterate without a way to measure success"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "design-009",
+    "chapter": 8,
+    "category": "System design judgment",
+    "difficulty": "senior",
+    "format": "question_first",
+    "scenario": "You're asked to design an agent, and partway through you realize the honest answer is that a simpler, non-agent solution would work better.",
+    "follow_up": "Do you say so, or do you deliver what was asked for? Why?",
+    "key_concepts": [
+      "honest scope pushback",
+      "system design judgment over compliance"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "deploy-001",
+    "chapter": 9,
+    "category": "Offline vs. online evaluation in deployment",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "Your evaluation score improved, but user satisfaction dropped.",
+    "follow_up": "Which online metrics matter more than offline benchmarks?",
+    "key_concepts": [
+      "canary health metrics",
+      "offline vs. online divergence",
+      "drift detection"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "deploy-002",
+    "chapter": 9,
+    "category": "Offline vs. online evaluation in deployment",
+    "difficulty": "senior",
+    "format": "question_first",
+    "scenario": "A new prompt version passes every offline eval, gets promoted through a canary rollout, and reaches 100% of traffic \u2014 then complaints start.",
+    "follow_up": "What does this tell you about the canary health check that was in place, specifically?",
+    "key_concepts": [
+      "canary threshold calibration",
+      "quiet regression",
+      "drift detection gap"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "deploy-003",
+    "chapter": 9,
+    "category": "Offline vs. online evaluation in deployment",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #deploy: \"canary rollout says everything's healthy at every stage but the refusal rate has clearly crept up since we shipped, how did the check miss this\"",
+    "follow_up": "What's the likely gap in the health check's threshold, not its logic?",
+    "key_concepts": [
+      "threshold calibration against real regression magnitude",
+      "canary health check design"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "deploy-004",
+    "chapter": 9,
+    "category": "Offline vs. online evaluation in deployment",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"Our automated rollout process said this was safe to ship to everyone,\" an engineer says, defending a shipped regression.",
+    "follow_up": "What would you want to see before accepting that as a full explanation?",
+    "key_concepts": [
+      "automated checks are only as good as their calibration",
+      "postmortem on threshold, not just process"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "deploy-005",
+    "chapter": 9,
+    "category": "Offline vs. online evaluation in deployment",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "A teammate suggests that shadow deployment makes canary monitoring redundant since you already compared offline.",
+    "follow_up": "Why doesn't a good shadow comparison make live canary monitoring unnecessary?",
+    "key_concepts": [
+      "shadow deployment measures offline only",
+      "real user behavior differs from offline comparison"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "deploy-006",
+    "chapter": 9,
+    "category": "Offline vs. online evaluation in deployment",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "A model provider silently updates the model behind a stable-sounding API name, and your system's behavior shifts even though you changed nothing on your side.",
+    "follow_up": "Since you can't roll back a change you didn't make, what's your actual mitigation?",
+    "key_concepts": [
+      "upstream model drift",
+      "pinning model versions",
+      "continuous monitoring independent of your own deploys"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "deploy-007",
+    "chapter": 9,
+    "category": "Prompt versioning and rollback",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "Someone edits a live prompt directly in a config file to fix an urgent issue, without going through the normal versioning process.",
+    "follow_up": "What breaks the next time someone needs to roll back?",
+    "key_concepts": [
+      "immutable prompt versioning",
+      "rollback requires real version history",
+      "in-place edits break rollback"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "deploy-008",
+    "chapter": 9,
+    "category": "Prompt versioning and rollback",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "You're told a prompt is \"version 3\" in production.",
+    "follow_up": "What would make you trust that claim, versus not?",
+    "key_concepts": [
+      "immutable version history",
+      "audit trail",
+      "version pointer vs. mutable value"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "deploy-009",
+    "chapter": 9,
+    "category": "Deployment strategy",
+    "difficulty": "mid",
+    "format": "stakeholder_quote",
+    "scenario": "\"Let's skip the canary stage for this one, it's a small wording change,\" a teammate proposes.",
+    "follow_up": "When would you agree, and when would you insist on the canary anyway?",
+    "key_concepts": [
+      "risk-proportional rollout caution",
+      "quiet failure modes justify caution even for small changes"
+    ],
+    "grounded_in_real_incident": false,
+    "source_note": null
+  }
+]

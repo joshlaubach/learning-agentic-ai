@@ -1,0 +1,29 @@
+name: CI
+
+"on":
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run full test suite (notebooks + agentlib unit tests)
+        run: >
+          pytest --nbmake curriculum/*.ipynb interview_prep/*.ipynb capstone/*.ipynb tests/
+        env:
+          # Intentionally no LLM_PROVIDER / API key secrets here -- every notebook must pass
+          # cleanly through its deterministic mock fallback with no key present, exactly as
+          # this repo's own build sessions verified locally. See README's "AI-assisted
+          # content and human review" section and PROGRESS.md's Unit 13 notes.
+          CI: "true"

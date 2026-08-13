@@ -1,0 +1,74 @@
+# ai-agent-interview-prep — pinned dependencies
+#
+# Target: Python 3.11 (matches the environment this repo was built and verified against).
+# Package manager: pip + a standard venv — chosen deliberately over uv/poetry because this
+# course is written for learners with a limited Python background (see README "Prerequisites"
+# and Chapter 1's setup section), and `python -m venv` + `pip install -r requirements.txt` is
+# the simplest mental model to teach and support.
+#
+# Versions below were the current stable releases as of the "last verified" date stamped in
+# REFERENCES.md. Re-check with `pip index versions <package>` before trusting them long after
+# that date — this file drifts the same way model names and pricing do (see README/REFERENCES.md
+# staleness disclaimer).
+
+# --- Notebook execution ---
+jupyter==1.1.1
+ipykernel==7.3.0
+nbformat==5.10.4
+
+# --- Core data / ML ---
+numpy==2.4.6
+scikit-learn==1.9.0
+faiss-cpu==1.15.0
+
+# --- Local embeddings (Chapter 3). Swapped from the spec's suggested `sentence-transformers`
+# (all-MiniLM-L6-v2) to spaCy's en_core_web_md: sentence-transformers downloads its model
+# weights from huggingface.co at runtime, and this repo's build environment's egress policy
+# blocks every huggingface.co/hf.co host outright (confirmed, not a transient error — see
+# PROGRESS.md's Unit 4 notes). spaCy's model ships as a single self-contained wheel hosted on
+# a GitHub release, so `pip install -r requirements.txt` alone installs real, offline-capable
+# word/document vectors (300-dim, GloVe-based) with no separate download step for anyone,
+# regardless of their network's access to Hugging Face.
+spacy==3.8.15
+en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl
+
+# --- Tokenization ---
+tiktoken==0.13.0
+
+# --- Schemas / validation ---
+pydantic==2.13.4
+
+# --- Config / env ---
+python-dotenv==1.2.2
+
+# --- LLM provider SDKs (both installed regardless of which LLM_PROVIDER is chosen, so
+# switching providers later needs no reinstall — see Chapter 1) ---
+anthropic==0.121.0
+openai==1.109.1
+
+# --- Datasets. `datasets`/`huggingface_hub` are kept pinned for Chapter 7's GH Archive slice
+# (`open-index/open-github` on Hugging Face) — that chapter will need to solve the same
+# huggingface.co reachability problem Chapter 3 hit, noted in PROGRESS.md for whoever builds
+# Unit 8. Chapter 3 itself no longer uses either: its SQuAD sample is fetched via
+# raw.githubusercontent.com (see agentlib/synthetic_data.py) and cached locally, needing only
+# `requests` below. ---
+datasets==5.0.1
+huggingface_hub==1.27.0
+duckdb==1.5.5
+
+# --- MCP (Chapter 7) ---
+mcp==1.29.0
+
+# --- Agent framework (capstone). LangGraph over the Claude Agent SDK per spec's own guidance
+# — the Agent SDK is Anthropic-specific, and this repo supports both Anthropic and OpenAI via
+# LLM_PROVIDER throughout; LangGraph is the provider-agnostic choice, used purely for graph
+# orchestration (state, nodes, conditional edges, a checkpointer for cross-turn memory) while
+# actual model calls still go through agentlib.llm_client, not a LangChain model wrapper. ---
+langgraph==1.2.11
+
+# --- HTTP (Chapter 3's SQuAD/messy-corpus fetches, cached after first pull) ---
+requests==2.34.2
+
+# --- Dev / test dependencies ---
+pytest==8.4.2
+nbmake==1.5.5
