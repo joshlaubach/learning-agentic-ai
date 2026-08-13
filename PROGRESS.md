@@ -40,7 +40,7 @@ and do not do more than one unit per session even with budget left over.
       versions only in `solutions/ch08_system_design_judgment_answers.md`.
 - [x] **Unit 10 — Chapter 9: LLMOps and Deployment.** Notebook + solutions file. Includes a
       working `Dockerfile` for the curriculum's agent.
-- [ ] **Unit 11 — `interview_prep/` in full.** `question_bank.json` (70+ entries, all 10
+- [x] **Unit 11 — `interview_prep/` in full.** `question_bank.json` (70+ entries, all 10
       seed scenario/follow-up pairs verbatim plus 5+ variants each),
       `solutions/question_bank_answers.json`, `mock_interview.ipynb`,
       `per_chapter_drills.ipynb`.
@@ -551,13 +551,81 @@ found per source:**
   -practices docs, and OpenClaw's Docker deployment docs — plus the full Docker
   -verification-limitation note, all verified via live search at build time.
 
-**Next unit:** Unit 11 — `interview_prep/` in full: `question_bank.json` (70+ entries, all
-10 seed scenario/follow-up pairs verbatim plus 5+ variants each, per spec),
-`solutions/question_bank_answers.json`, `mock_interview.ipynb`, `per_chapter_drills.ipynb`.
-This is the first unit that spans multiple deliverable files under one directory rather than
-one notebook + one solutions file — worth re-reading the original spec's exact
-`interview_prep/` requirements closely at the start of that session, since this file's
-own summaries of later units are necessarily compressed. No known data-access risk expected
-(original scenario content, not derived from an external dataset), but the "no citations
-expected" pattern doesn't apply here — check whether any question content requires
-verification against a real source before treating this as citation-free.
+## Notes from Unit 11
+
+- **The exact text of the "10 seed scenario/follow-up pairs" this file's own Unit 10 note
+  referred to was not preserved anywhere in the repo** — only the meta-description
+  ("verbatim") survived compaction, not the seed content itself. Rather than fabricate
+  replacement seed questions or silently drop the "verbatim" requirement, recovered the
+  original build specification text from this session's own pre-compaction transcript
+  (`/root/.claude/projects/.../*.jsonl`, referenced in the compaction summary's own "if you
+  need specific details" pointer) and extracted the real spec section verbatim from there.
+  Worth remembering for any future session that finds a forward note referencing content it
+  doesn't actually have: check the pre-compaction transcript before assuming the content is
+  unrecoverable.
+- **All 10 seeds are in `question_bank.json` verbatim**, each with exactly 5 additional
+  variant entries in the same chapter (6 total per seed cluster) — programmatically verified,
+  not just visually checked (see the validation script's output below). Seed 10 ("Your
+  evaluation score improved, but user satisfaction dropped.") is deliberately duplicated in
+  both Chapter 3 (`evalgap-001`) and Chapter 9 (`deploy-001`) per the spec's own instruction,
+  with independently-written variant clusters in each chapter's context (RAG-evaluation
+  framing in Ch3, canary-rollout framing in Ch9) rather than the same six variants copy-pasted
+  into two chapters.
+- **93 total entries** (spec required 70+, ~8-12 per chapter as a general target) — Chapter 3
+  has 18 (three seed clusters: RAG confident-but-wrong, hallucination-explanation, and the
+  Ch3 half of the duplicated eval-gap seed), Chapter 5 has 12 (two seed clusters: GPU cost,
+  latency), every other chapter has 9. Chapter 8 has zero seed material (per spec, "Chapter 8
+  entirely" has none) and is fully originally-generated.
+- **Three entries are grounded in real, verified public incidents**, per the Humanization
+  Requirements: `hallu-004` (Moffatt v. Air Canada, the chatbot bereavement-fare tribunal
+  ruling), `hallu-005` (Mata v. Avianca, the fabricated-case-citations sanctions case), and
+  `security-002` (the Chevrolet dealership chatbot prompt-injection incident) — each verified
+  via live search before writing (not trusted from memory), paraphrased into original wording
+  rather than quoting source coverage, and carrying a real `source_note` URL.
+- **Format variety enforced, not just claimed** — final distribution across all 93 entries:
+  33 `scenario_first`, 29 `question_first`, 17 `slack_message`, 14 `stakeholder_quote`; no
+  chapter uses only one format.
+- **Validated programmatically before moving on**, not just by inspection: valid JSON: unique
+  IDs; every `question_bank.json` schema field present on every entry; zero inline-answer
+  fields in `question_bank.json` itself; exact 1:1 id match between `question_bank.json` and
+  `solutions/question_bank_answers.json` (93 entries, 93 answers, no orphans on either side);
+  per-chapter counts; and a direct check that every one of the 10 seed scenario/follow-up
+  pairs (11 instances, counting the Ch3/Ch9 duplicate) appears character-for-character.
+- **`mock_interview.ipynb` and `per_chapter_drills.ipynb` both needed two layers of
+  headless-safe `input()` handling, not one.** Plain Python raises `EOFError` when `input()`
+  is called with closed/empty stdin, which is what a script run outside a notebook would hit
+  — but the ZMQ-based Jupyter kernel `nbconvert`/`pytest --nbmake` actually execute cells
+  through raises IPython's `StdinNotImplementedError` instead, since the connected frontend
+  doesn't implement stdin requests at all. Caught this by actually running `pytest --nbmake`
+  against the first draft (which only caught `EOFError`) and seeing the real failure, not by
+  reasoning about it in advance — both exceptions are now caught, and both notebooks execute
+  cleanly under nbmake while still behaving like a normal interactive prompt when run for
+  real.
+- **The branching example (spec-required: "at least one branching example... implement as
+  real conditional logic on keyword matches") is demonstrated deterministically in
+  `mock_interview.ipynb`** with three canned example answers run through the same
+  `branching_follow_up()` function the live session uses — one triggering the "add more
+  GPUs" pushback branch, one triggering the "profile first" easier-follow-up branch, one
+  matching neither and falling back to the standard question — so the branching logic is
+  genuinely exercised and its real output committed, not just described as possible.
+- **No new `agentlib` module** — `interview_prep/`'s logic (sampling, keyword feedback,
+  branching) is specific to this unit and inline in its own notebooks, consistent with the
+  fixed six-file `agentlib/` inventory.
+- **README.md's AI-assistance disclosure and CONTRIBUTING.md's "submit a real interview
+  question" section were already written in full during Unit 1** and needed no changes this
+  unit — confirmed rather than assumed, since the spec's Humanization Requirement #5 (disclose
+  AI assistance, invite real-question PRs) was correctly anticipated and built early.
+- **Verification:** `pytest --nbmake` on both new notebooks passed individually before the
+  full-suite run; `curriculum/*.ipynb interview_prep/*.ipynb tests/` together: 36/36 passed
+  (9 curriculum + 2 interview_prep notebooks + 25 `tests/` — `capstone/`'s still-stub notebook
+  intentionally excluded from this specific run, unaffected by this unit). Both new notebooks
+  executed in place; committed output includes a real 5-question mock session (headless
+  placeholder answers, but real sampling, real keyword checks, real follow-ups) and a real
+  9-question Chapter 6 drill run in bank order.
+
+**Next unit:** Unit 12 — `capstone/` in full: `capstone/README.md` + `capstone_agent.ipynb`,
+built on LangGraph or the Claude Agent SDK, reusing `agentlib/llm_client.py` and Chapter 1's
+account setup, filling in the capstone section of `REFERENCES.md`. Per Unit 1's original
+notes, `chromadb` vs. `faiss-cpu` and other earlier judgment calls may be worth
+re-confirming still hold for whatever the capstone actually builds. No known blocked-host
+risk anticipated, but check early per the established pattern regardless.
