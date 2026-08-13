@@ -297,6 +297,22 @@ specific external source.)*
 
 ## Capstone and Appendices
 
-*(Populated in Unit 12 for the capstone — LangGraph or Claude Agent SDK, OpenClaw comparison.
-Prerequisite-section concepts like async I/O, testing, and Docker cite official docs only, no
-paper needed.)*
+- LangChain, Inc. "LangGraph." Project documentation and repository.
+  https://docs.langchain.com/oss/python/langgraph/overview ;
+  https://github.com/langchain-ai/langgraph ; API reference at
+  https://reference.langchain.com/python/langgraph. No canonical paper; cited for the
+  `StateGraph`/checkpointer orchestration pattern `capstone/capstone_agent.ipynb` builds on.
+  Chosen over the Claude Agent SDK per this course's own spec: the Agent SDK is
+  Anthropic-specific, while this repo supports both Anthropic and OpenAI via `LLM_PROVIDER`
+  throughout, and LangGraph is used here purely for graph orchestration — state, nodes,
+  conditional edges, a `MemorySaver` checkpointer for cross-turn memory — while actual model
+  calls still go through `agentlib.llm_client`, not a LangChain-native model wrapper, so
+  switching providers needs no capstone-specific code change.
+- OpenClaw. Documentation. https://docs.openclaw.ai/ (see Chapter 2's `REFERENCES.md` entry
+  for the project's general architecture docs, and Chapter 6's and Chapter 9's entries for
+  its security and deployment docs respectively). Cited in `capstone/README.md`'s "how this
+  compares to a real system" section as a real, production example combining the same
+  pieces this capstone does — retrieval/context assembly, tool use, and persistent memory,
+  per its own documented three-layer architecture and seven-stage agentic loop — and, per its
+  own security guidance, the same layered untrusted-content mitigation this course's
+  Chapter 6 and this capstone's safeguard both implement.

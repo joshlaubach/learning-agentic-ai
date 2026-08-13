@@ -44,7 +44,7 @@ and do not do more than one unit per session even with budget left over.
       seed scenario/follow-up pairs verbatim plus 5+ variants each),
       `solutions/question_bank_answers.json`, `mock_interview.ipynb`,
       `per_chapter_drills.ipynb`.
-- [ ] **Unit 12 — `capstone/` in full.** `capstone/README.md` + `capstone_agent.ipynb`, built
+- [x] **Unit 12 — `capstone/` in full.** `capstone/README.md` + `capstone_agent.ipynb`, built
       on LangGraph or the Claude Agent SDK, reusing `agentlib/llm_client.py` and Chapter 1's
       account setup. Fills in the capstone section of `REFERENCES.md`.
 - [ ] **Unit 13 — CI.** `tests/test_notebooks.py` and `tests/test_agentlib.py` made real
@@ -623,9 +623,71 @@ found per source:**
   placeholder answers, but real sampling, real keyword checks, real follow-ups) and a real
   9-question Chapter 6 drill run in bank order.
 
-**Next unit:** Unit 12 — `capstone/` in full: `capstone/README.md` + `capstone_agent.ipynb`,
-built on LangGraph or the Claude Agent SDK, reusing `agentlib/llm_client.py` and Chapter 1's
-account setup, filling in the capstone section of `REFERENCES.md`. Per Unit 1's original
-notes, `chromadb` vs. `faiss-cpu` and other earlier judgment calls may be worth
-re-confirming still hold for whatever the capstone actually builds. No known blocked-host
-risk anticipated, but check early per the established pattern regardless.
+## Notes from Unit 12
+
+- **Recovered the exact capstone spec from the pre-compaction transcript**, same recovery
+  method as Unit 11 — the original build prompt's "Capstone" section (a single combined
+  agent: retrieval + Ch7 tool use + memory + a Ch6 safeguard, LangGraph or the Claude Agent
+  SDK, LangGraph recommended as the provider-agnostic default) was extracted verbatim rather
+  than reconstructed from this file's own compressed forward notes.
+- **LangGraph chosen over the Claude Agent SDK**, exactly as the spec itself recommends —
+  the Agent SDK is Anthropic-specific, and this whole repo supports both Anthropic and OpenAI
+  via `LLM_PROVIDER`. `langgraph==1.2.11` added to `requirements.txt` (pulls in
+  `langchain-core`, `langgraph-checkpoint`, `langgraph-prebuilt` as real transitive deps, left
+  unpinned like other transitive deps elsewhere in the file). **Used purely for graph
+  orchestration** (`StateGraph`, nodes, conditional edges, `MemorySaver` for a real
+  checkpointer) — actual model calls still go through `agentlib.llm_client.call_model()`, not
+  a LangChain-native model wrapper, so `LLM_PROVIDER` switching still works with zero
+  capstone-specific code changes, preserving the whole repo's provider-agnostic design.
+- **Both real Chapter artifacts genuinely reused, not re-implemented:** the exact
+  `TfidfRetriever` class from Chapter 3 (same shape, over the same real `squad_sample.json`
+  corpus), and a genuine stdio connection to Chapter 7's actual `curriculum/_ch07_mcp_server.py`
+  process, calling its real `get_package_info` tool and validating the response with the same
+  `PackageInfo` Pydantic model.
+- **Caught and fixed a real infinite-loop bug in the mock decision path before it ever ran**:
+  the first draft of `fake_decide` only looked at the latest *user* message to decide which
+  tool to call, so after a tool result came back, it would re-derive the exact same tool call
+  from the same original question and loop forever, since a tool result was never recognized
+  as a signal to stop and answer. Fixed by adding an explicit termination branch: if the most
+  recent message is a tool result, synthesize a final answer instead of deciding again — a
+  real model with real reasoning would do this naturally, but the deterministic mock path
+  needed the termination condition made explicit.
+- **The memory demo was redesigned once, for a real reason.** The first draft's cross-turn
+  follow-up ("Who led that army?") relied on pronoun resolution the mock decision function
+  can't actually do — it only looks at the latest message, so the follow-up would have
+  triggered a fresh, disconnected retrieval search rather than genuinely demonstrating memory
+  working. Redesigned around a meta-question ("What was the first question I asked you?")
+  that can *only* be answered correctly by scanning the full accumulated message history —
+  an unambiguous, mechanistic proof that LangGraph's checkpointer is providing real state
+  across `ainvoke()` calls, not something that looks like memory by coincidence.
+- **The Chapter 6 safeguard is proven wired into the live pipeline, not just demonstrated
+  standalone** — after the standalone `sanitize_retrieved_text` demo (same shape as Chapter
+  6's own break-it demo), a second demo runs the real `tool_node` function itself (via a
+  temporary tool swap, not a separate reimplementation) against a deliberately poisoned
+  document, confirming the injected directive genuinely never reaches the conversation
+  through the actual code path Ava's graph executes.
+- **No new `agentlib` module** — the capstone's own logic (state schema, decision functions,
+  graph wiring) is specific to this one project and lives in `capstone_agent.ipynb` itself,
+  consistent with the fixed six-file `agentlib/` inventory used throughout this build.
+- **Verification:** `pytest --nbmake` on the finished notebook passed at each of the eight
+  build stages before moving to the next; full-suite `pytest --nbmake` across all 17
+  notebooks (curriculum + interview_prep + capstone) plus `tests/` also passed (37/37 —
+  unchanged agentlib test count, no new module this unit). Notebook executed in place after
+  every stage; the committed version shows real output throughout, including a real
+  retrieved passage about Genghis Khan and the Shah's army, a real memory-proving answer to
+  "what was the first question I asked you," a real PyPI package summary via the live MCP
+  tool, and a real sanitized (directive-stripped) result from the poisoned-document safeguard
+  proof.
+- `capstone/README.md` rewritten in full from its Unit 1 placeholder — what it does, what it
+  demonstrates, how to run it on either provider or with no key, and the OpenClaw
+  comparison section the spec calls for. `REFERENCES.md`'s Capstone and Appendices section
+  filled in (LangGraph's own docs, OpenClaw's docs cited for the real-system comparison) —
+  both verified via live search at build time.
+
+**Next unit:** Unit 13 — CI. `tests/test_notebooks.py` and `tests/test_agentlib.py` made
+real (they already are — both have been genuinely exercised, not stubs, since Units 2 and 4
+respectively; this unit is about wiring them into an actual `.github/workflows/ci.yml`, not
+writing them from scratch), the CI workflow file itself, the README CI badge wired up, and
+one full clean-environment run (fresh venv, `requirements.txt` only, no `.env`) confirming
+everything CI checks actually passes end-to-end. This is the final unit — after Unit 13, the
+full 13-unit build is complete.

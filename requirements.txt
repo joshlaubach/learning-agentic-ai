@@ -59,6 +59,13 @@ duckdb==1.5.5
 # --- MCP (Chapter 7) ---
 mcp==1.29.0
 
+# --- Agent framework (capstone). LangGraph over the Claude Agent SDK per spec's own guidance
+# — the Agent SDK is Anthropic-specific, and this repo supports both Anthropic and OpenAI via
+# LLM_PROVIDER throughout; LangGraph is the provider-agnostic choice, used purely for graph
+# orchestration (state, nodes, conditional edges, a checkpointer for cross-turn memory) while
+# actual model calls still go through agentlib.llm_client, not a LangChain model wrapper. ---
+langgraph==1.2.11
+
 # --- HTTP (Chapter 3's SQuAD/messy-corpus fetches, cached after first pull) ---
 requests==2.34.2
 
