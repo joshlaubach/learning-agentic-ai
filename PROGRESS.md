@@ -35,7 +35,7 @@ and do not do more than one unit per session even with budget left over.
       local MCP server over stdio; pulls and caches a filtered GH Archive slice
       (`open-index/open-github`) — pin the exact date range used, verified against the
       dataset card at build time.
-- [ ] **Unit 9 — Chapter 8: System Design and Engineering Judgment.** Notebook + solutions
+- [x] **Unit 9 — Chapter 8: System Design and Engineering Judgment.** Notebook + solutions
       file. Mostly markdown; blank design-doc templates in the notebook, fully worked model
       versions only in `solutions/ch08_system_design_judgment_answers.md`.
 - [ ] **Unit 10 — Chapter 9: LLMOps and Deployment.** Notebook + solutions file. Includes a
@@ -459,11 +459,44 @@ found per source:**
   docs, Pydantic's own docs, and a full access note documenting the GH Archive → PyPI
   substitution — all verified via live search at build time.
 
-**Next unit:** Unit 9 — Chapter 8 notebook (`curriculum/08_system_design_judgment.ipynb`) and
-`solutions/ch08_system_design_judgment_answers.md`. Per spec this chapter is mostly markdown
-(a repeatable system-design framework, blank design-doc studios, judgment prompts) with no
-citations expected — REFERENCES.md's Chapter 8 section already notes this and needs no
-verification work. No known data-access risk for this chapter, since it's original
-scenario/judgment content rather than derived from an external dataset — but note that
-Chapter 9 (Unit 10, LLMOps/Deployment) is next after that and doesn't obviously depend on any
-blocked host either, so the run of access-workaround units may be over for now.
+## Notes from Unit 9
+
+- **No new `agentlib` module and no citations** — both expected per spec and per this file's
+  own forward note; confirmed rather than assumed. `REFERENCES.md`'s Chapter 8 section
+  already correctly stated "no citations expected" from Unit 1 and needed no edit this unit.
+- **Genuinely mostly markdown**, as spec anticipated — the notebook has 12 cells total, of
+  which only 2 are code (a small `DesignDoc` dataclass mirroring the nine-question framework,
+  and nothing else — no break-it section, since there's no runnable bug to inject in a
+  judgment/framework chapter). This is a deliberate departure from every prior chapter's
+  concept/build/break-it/interview-drill structure, not an oversight — a system-design
+  judgment chapter doesn't have a "break it" in the same sense Chapters 1-7 do, since there's
+  no single piece of code whose failure mode is the teaching point.
+- **The nine-question framework was designed to explicitly cite back to Chapters 1-7**
+  (a table mapping each question to the chapter that built the underlying technique) rather
+  than introducing new judgment criteria from scratch — the goal was synthesis, not new
+  content, matching the spec's framing of this chapter as consolidating prior material into a
+  repeatable interview process rather than teaching something new.
+- **Three design-doc studios were deliberately built with different risk/latency/reliability
+  profiles** (a high-stakes financial-action agent, a low-stakes human-reviewed assistant, and
+  a correctness-critical grounded-QA system) specifically so the solutions file's answers
+  can't just repeat the same generic reasoning three times — each studio's answer to "what's
+  the reliability story" or "what's the security surface" genuinely differs based on that
+  studio's actual stakes, which is itself the point the chapter is trying to teach (judgment
+  that's sensitive to context, not a fixed checklist applied identically everywhere).
+- **Verification:** `pytest --nbmake` on the finished notebook passed at each of the four
+  build stages (title/concept/"when not to use an agent"; the `DesignDoc` framework cell;
+  the three blank studios; interview drill + recap) before moving to the next; full-suite
+  `pytest --nbmake` across all 16 notebooks plus `tests/` also passed (34/34 — unchanged
+  agentlib test count, no new module this unit, consistent with this chapter having no
+  runnable technique to add tests for). Notebook executed in place; grepped for "Answer:" and
+  bold/italic "Answer" patterns across all markdown cells to confirm zero inline-answer
+  violations, same check applied to every prior chapter.
+
+**Next unit:** Unit 10 — Chapter 9 notebook (`curriculum/09_llmops_deployment.ipynb`) and
+`solutions/ch09_llmops_deployment_answers.md`. Per spec this chapter covers canary releases,
+shadow deployment, prompt versioning, drift detection, rollback, and includes a working
+`Dockerfile` for the curriculum's agent code. No known blocked-host risk identified for this
+chapter's likely content (deployment concepts, containerization) — should still be checked
+early per the established pattern, since Docker itself needs no network access to build
+locally but any base-image pull would need `docker.io`/a registry reachable, worth confirming
+before assuming a `docker build` step in this chapter's verification will work unmodified.
