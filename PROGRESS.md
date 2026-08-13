@@ -47,7 +47,7 @@ and do not do more than one unit per session even with budget left over.
 - [x] **Unit 12 — `capstone/` in full.** `capstone/README.md` + `capstone_agent.ipynb`, built
       on LangGraph or the Claude Agent SDK, reusing `agentlib/llm_client.py` and Chapter 1's
       account setup. Fills in the capstone section of `REFERENCES.md`.
-- [ ] **Unit 13 — CI.** `tests/test_notebooks.py` and `tests/test_agentlib.py` made real
+- [x] **Unit 13 — CI.** `tests/test_notebooks.py` and `tests/test_agentlib.py` made real
       (not stubs), `.github/workflows/ci.yml`, README CI badge wired up, plus one full clean
       -environment run (fresh venv, `requirements.txt` only, no `.env`) confirming everything
       CI checks actually passes.
@@ -684,10 +684,73 @@ found per source:**
   filled in (LangGraph's own docs, OpenClaw's docs cited for the real-system comparison) —
   both verified via live search at build time.
 
-**Next unit:** Unit 13 — CI. `tests/test_notebooks.py` and `tests/test_agentlib.py` made
-real (they already are — both have been genuinely exercised, not stubs, since Units 2 and 4
-respectively; this unit is about wiring them into an actual `.github/workflows/ci.yml`, not
-writing them from scratch), the CI workflow file itself, the README CI badge wired up, and
-one full clean-environment run (fresh venv, `requirements.txt` only, no `.env`) confirming
-everything CI checks actually passes end-to-end. This is the final unit — after Unit 13, the
-full 13-unit build is complete.
+## Notes from Unit 13 (final unit)
+
+- **`.github/workflows/ci.yml` added** — installs `requirements.txt` on `ubuntu-latest` /
+  Python 3.11, then runs the exact same command every prior unit used to self-verify:
+  `pytest --nbmake curriculum/*.ipynb interview_prep/*.ipynb capstone/*.ipynb tests/`.
+  Triggers on every `push` and `pull_request`, no secrets referenced anywhere in the
+  workflow — CI runs entirely through each notebook's mock/`HAS_KEY=False` fallback path, by
+  design, per Hard Constraint #1. `"on":` quoted explicitly in the YAML to avoid the
+  well-known YAML 1.1 boolean-coercion gotcha (`on` → `True`) some generic parsers apply,
+  even though GitHub Actions' own parser handles the bare key correctly regardless.
+- **README's CI badge needed no changes** — it was already written correctly in Unit 1,
+  pointing at exactly this workflow's real path
+  (`joshlaubach/learning-agentic-ai/actions/workflows/ci.yml`), anticipating this unit
+  correctly a dozen units in advance.
+- **One full clean-environment run performed**, exactly as the spec's Unit 13 and Final
+  Acceptance Checklist both require: a brand-new venv (not the incrementally-built one every
+  prior unit's verification reused), `pip install -r requirements.txt` with no other install
+  step, no `.env` present, no relevant API-key env vars set — `pytest --nbmake
+  curriculum/*.ipynb interview_prep/*.ipynb capstone/*.ipynb tests/` → **37/37 passed**. This
+  is the strongest verification this repo has had of `requirements.txt`'s completeness and
+  correctness, since every earlier unit's local verification reused a venv that had
+  accumulated installs incrementally (including one manual `pip install langgraph` in Unit 12
+  before it was added to `requirements.txt` in the same session) rather than proving the pins
+  file installs cleanly from nothing in one shot.
+- **Went through the spec's full Final Acceptance Checklist item by item** (not just this
+  unit's own narrower CI requirements), since this is genuinely the last unit and nothing
+  else will re-check the whole repo afterward. Verified: no notebook or `question_bank.json`
+  entry contains an inline answer (full grep sweep, zero hits beyond the disclosure text
+  itself); `.env` is git-ignored and a full history grep found no real credentials anywhere
+  (one placeholder `sk-ant-...` illustrative string in Chapter 1's setup instructions, not a
+  real key); `agentlib.llm_client` is genuinely reused (not reimplemented) in Chapters 1, 2,
+  3, 4, 6, 7, and the capstone; Chapter 1's setup section has the spend-limit-before-key-
+  generation step and the $15–20 ceiling; Chapter 6 opens with the responsible-use note as
+  its literal first cell; `REFERENCES.md`'s staleness date is stamped and echoed in the
+  README; `CONTRIBUTING.md`/`SECURITY.md`/`LICENSE` all exist at the repo root; every
+  `solutions/` file has real, substantial content (not a stub).
+- **Caught and fixed one real, previously-unnoticed inaccuracy during this pass:** the
+  README's License section described SEC EDGAR- and GH Archive-derived material as being
+  present in the repo (carried over from the original build spec's plan) — but neither
+  source was ever actually reachable (documented in Units 4 and 8), so neither one's data
+  ever made it into the repo at all. The README described a plan, not the repository's
+  actual contents. Rewrote the License section to describe what's genuinely bundled instead
+  — the real SQuAD sample (CC BY-SA 4.0), the real `anthropic-sdk-python` CHANGELOG.md
+  excerpt (MIT), the vendored `tiktoken` vocabulary file (OpenAI-distributed, not
+  independently re-licensed), and the cached PyPI package metadata (factual data, not
+  independently copyrightable) — with an explicit note that the original SEC
+  EDGAR/GH Archive plan never materialized and why, so a reader isn't misled about what's
+  actually here. This is exactly the kind of drift a final acceptance pass exists to catch —
+  accurate at the time each unit was written, stale by the time the whole repo was assembled.
+- **Verification:** the clean-environment run above is this unit's primary verification
+  (37/37, fresh venv, no `.env`); re-ran the full suite once more against the existing
+  incremental `.venv` after the README License-section fix to confirm nothing regressed
+  (37/37 again).
+
+## Build complete
+
+All 13 units are checked off above, and this file's own state matches the actual repository
+— every file it claims exists does, and every notebook it claims passes does, verified fresh
+in a clean environment in this same unit, not carried forward as an assumption from earlier
+units. Per the Final Acceptance Checklist: real-API-path code is structurally correct and
+consistently reuses `agentlib.llm_client` across every chapter that needs it, but — as every
+unit's own notes have said throughout — was never executed against a live Anthropic or
+OpenAI key in this build environment, since none was ever provided; that verification still
+needs to happen against a real key before this repository is exercised end-to-end on the
+real-API path a human learner is meant to use as the default. Everything else in the
+checklist was verified directly against the repository's actual, current state during this
+final unit, not assumed from earlier sessions' notes.
+
+This file can stay in the repo as a build record, or be deleted — either is fine now that
+the build itself is done.

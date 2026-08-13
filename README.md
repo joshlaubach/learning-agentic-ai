@@ -177,11 +177,24 @@ everything in it:
 
 - **All original code and written content** (notebooks, `agentlib/`, solutions, question
   bank, prose) is **MIT licensed** — see [`LICENSE`](LICENSE).
-- **Chapter 3's SQuAD-derived material** carries SQuAD's own **CC BY-SA 4.0** terms (see the
-  `rajpurkar/squad` dataset card, cited in `REFERENCES.md`).
-- **Chapter 3's SEC EDGAR-derived material** and **Chapter 7's GH Archive-derived material**
-  are U.S. government/public-domain-sourced (EDGAR) or ODC-By v1.0-licensed with attribution
-  required (GH Archive mirror) — see `REFERENCES.md` for the exact terms of each.
+- **Chapter 3's SQuAD-derived material** (`data/rag_corpus/squad_sample.json`) carries
+  SQuAD's own **CC BY-SA 4.0** terms (see the `rajpurkar/squad` dataset card, cited in
+  `REFERENCES.md`).
+- **Chapter 3's messy-corpus source** (`data/rag_corpus/messy_source_changelog.md`, a real
+  excerpt of `anthropic-sdk-python`'s own `CHANGELOG.md`) is **MIT licensed**, per that
+  project's own license.
+- **Chapter 5's vendored `tiktoken` vocabulary file** (`data/tiktoken_cache/`) is distributed
+  by OpenAI as part of the `tiktoken` library for use with it; this repo's copy is a
+  hash-verified, byte-identical mirror, not independently re-licensed content.
+- **Chapter 7's cached PyPI package metadata** (`data/pypi_cache/`) is factual package
+  metadata (name, version, summary, license, URLs) pulled from PyPI's own public JSON API,
+  not independently copyrightable creative content.
+
+Note: the original build specification for this course anticipated SEC EDGAR and GH Archive
+as data sources for Chapters 3 and 7 respectively; both are unreachable from this repo's
+build environment (see `PROGRESS.md`'s Unit 4 and Unit 8 notes), so neither actually appears
+in this repo — the license breakdown above reflects what's genuinely bundled here, not the
+original plan.
 
 Check `REFERENCES.md` before reusing any dataset-derived content outside this repo.
 
