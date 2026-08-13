@@ -259,8 +259,41 @@ specific external source.)*
 
 ## Chapter 9 — LLMOps and Deployment
 
-*(Populated in Unit 10 — canary/progressive delivery, Docker, OpenClaw containerized
-deployment.)*
+- Sato, D. "CanaryRelease." *martinfowler.com* bliki. https://martinfowler.com/bliki/CanaryRelease.html.
+  The canonical description of the canary-release pattern this chapter's `route_request()`
+  and progressive-rollout demo implement — a small subset of traffic routed to a new
+  version, expanded only once it's shown to be healthy.
+- Google SRE Workbook. "Canarying Releases."
+  https://sre.google/workbook/canarying-releases/. Cited for progressive-delivery staging
+  (Google's own documented rollout progression, e.g. 1% → 5% → 25% → 50% → 100%, informed
+  this chapter's `run_progressive_rollout()` stage list) and for the framing of canary
+  analysis as an explicit, automated health check at each stage rather than a one-time
+  manual decision.
+- Docker, Inc. "Building best practices." *Docker Docs.*
+  https://docs.docker.com/build/building/best-practices/. Cited for the dependency-layer
+  -before-code-layer ordering, `.dockerignore` usage, and minimal-base-image guidance this
+  chapter's root `Dockerfile` follows.
+- OpenClaw. "Docker." *OpenClaw Docs.* https://docs.openclaw.ai/install/docker. Cited for a
+  real, production example of containerized deployment for an agent-shaped system
+  specifically (environment variables for API keys supplied at `docker run` time, not baked
+  into the image; bind-mounted persistent state) — the same project cited in Chapter 2's
+  `REFERENCES.md` entry for its architecture docs, cited here for its deployment docs
+  instead.
+- **Verification note — Docker build could not be executed end-to-end in this build
+  environment.** This build environment's sandboxed network policy blocks the CDN hosts that
+  actually serve container image layer *blobs* for both Docker Hub
+  (`production.cloudfront.docker.com`) and GitHub Container Registry
+  (`pkg-containers.githubusercontent.com`) — confirmed by directly attempting `docker pull
+  python:3.11-slim` and a GHCR image, both failing specifically at the blob-download step
+  (registry API/manifest resolution is reachable; the actual layer data is not). A `FROM
+  scratch` build with no external base image completed successfully in the same session,
+  confirming this is a network-policy block on those specific CDN hosts, not a broader Docker
+  malfunction. Unlike every other Hugging-Face/SEC-driven substitution in this build (SQuAD,
+  the messy-corpus source, `tiktoken`, GH Archive → PyPI), there is no alternate real source
+  to substitute for a base container image, so this repo's root `Dockerfile` is real,
+  reviewed, and internally consistent with this repo's own conventions, but `docker build -t
+  agent-interview-prep .` itself was not run to completion and verified in this specific
+  session. See `PROGRESS.md`'s Unit 10 notes for the full verification trail.
 
 ## Capstone and Appendices
 

@@ -38,7 +38,7 @@ and do not do more than one unit per session even with budget left over.
 - [x] **Unit 9 — Chapter 8: System Design and Engineering Judgment.** Notebook + solutions
       file. Mostly markdown; blank design-doc templates in the notebook, fully worked model
       versions only in `solutions/ch08_system_design_judgment_answers.md`.
-- [ ] **Unit 10 — Chapter 9: LLMOps and Deployment.** Notebook + solutions file. Includes a
+- [x] **Unit 10 — Chapter 9: LLMOps and Deployment.** Notebook + solutions file. Includes a
       working `Dockerfile` for the curriculum's agent.
 - [ ] **Unit 11 — `interview_prep/` in full.** `question_bank.json` (70+ entries, all 10
       seed scenario/follow-up pairs verbatim plus 5+ variants each),
@@ -492,11 +492,72 @@ found per source:**
   bold/italic "Answer" patterns across all markdown cells to confirm zero inline-answer
   violations, same check applied to every prior chapter.
 
-**Next unit:** Unit 10 — Chapter 9 notebook (`curriculum/09_llmops_deployment.ipynb`) and
-`solutions/ch09_llmops_deployment_answers.md`. Per spec this chapter covers canary releases,
-shadow deployment, prompt versioning, drift detection, rollback, and includes a working
-`Dockerfile` for the curriculum's agent code. No known blocked-host risk identified for this
-chapter's likely content (deployment concepts, containerization) — should still be checked
-early per the established pattern, since Docker itself needs no network access to build
-locally but any base-image pull would need `docker.io`/a registry reachable, worth confirming
-before assuming a `docker build` step in this chapter's verification will work unmodified.
+## Notes from Unit 10
+
+- **Confirmed the Docker base-image reachability risk flagged at the end of Unit 9 was real,
+  and characterized it precisely before writing any content that assumed otherwise:**
+  `docker` CLI and `dockerd` are both installed in this build environment (no systemd, so
+  `dockerd` needed to be started manually — works fine once started). `docker pull
+  python:3.11-slim` and a GHCR image both fail specifically at the blob-download step
+  (`production.cloudfront.docker.com` / `pkg-containers.githubusercontent.com`, both
+  `Forbidden`) — the registry API/manifest resolution itself succeeds first, only the actual
+  layer data is blocked. Confirmed this is a targeted network-policy block, not a broader
+  Docker malfunction, by running a `FROM scratch` build (no external base image) to
+  completion successfully in the same session. `docker build --check` (buildx's lint-only
+  mode) also fails the same way, since it still needs to resolve base-image metadata.
+- **No substitute exists for this one, unlike every prior HF/SEC-driven substitution** — SQuAD
+  had a GitHub-hosted equivalent, `tiktoken` had a hash-verifiable mirrored vocab file, GH
+  Archive had PyPI's live API as a legitimate alternative real-data source. A container base
+  image has no equivalent "differently-hosted, still-real" substitute — it's not a dataset
+  that can be fetched from an alternate reachable host, it's specifically Docker Hub/GHCR's
+  own layer storage. Rather than fabricate a fake "build succeeded" result or silently skip
+  the deliverable, wrote a real, carefully-reviewed root `Dockerfile` (non-root user,
+  dependency-layer-before-code-layer caching order, no secrets baked in, a `HEALTHCHECK`) and
+  documented transparently, in both `REFERENCES.md` and this file, exactly what could and
+  couldn't be verified — this is a genuine limitation of this specific build session's sandbox,
+  not a claim that the Dockerfile is untested in principle; a normal network environment
+  should build it successfully.
+- **Kept all Docker interaction out of the notebook's own executed cells entirely** — Hard
+  Constraint #3 requires every notebook to execute with zero errors, in any environment, and
+  invoking `docker build` from inside a notebook cell would make that constraint
+  environment-dependent (working in a normal network environment, failing in this build's
+  own sandbox, and potentially in other sandboxed CI environments too). The notebook instead
+  reads and prints the real `Dockerfile`'s actual content (a real file read, not a string
+  copy embedded in the notebook) and explains the verification limitation in markdown —
+  everything the notebook itself executes remains genuinely network-independent.
+- **No new `agentlib` module** — same reasoning as Units 5, 6, 8: the file inventory is
+  fixed, and none of the six files is deployment-specific, so `PromptRegistry`, the canary
+  router, and the drift-detection functions are all inline in the notebook.
+- **Caught the same "silent no-op" bug class break-it sections have hit before, twice, before
+  running anything:** the first draft of break-it 1's malicious-directive-style demo (a
+  regressed prompt) and break-it 2's rollout demo both needed the *same* underlying
+  regression (v3-regressed's ~35% refusal rate vs. v1's ~3%) to actually register as
+  "unhealthy" against whatever threshold was in place — designed `check_canary_health`'s
+  buggy version (`threshold=0.5`) and its fix (`threshold=0.05`) by first computing what the
+  real simulated regression's magnitude actually is (~32 points), then picking a buggy
+  threshold safely above it and a fixed threshold safely below it, rather than guessing
+  round numbers and hoping they'd produce the right before/after — the same lesson break-it
+  #2 itself is teaching, applied to writing the break-it section.
+- **Verification:** `pytest --nbmake` on the finished notebook passed at each of the seven
+  build stages (title/concept/setup; prompt registry; canary router + shadow deployment;
+  break-it 1; break-it 2; containerization section; interview drill + recap) before moving to
+  the next; full-suite `pytest --nbmake` across all 16 notebooks plus `tests/` also passed
+  (34/34 — unchanged agentlib test count, no new module this unit). Notebook executed in
+  place after every stage; the committed version shows real output throughout, including the
+  buggy threshold's rollout reaching "FULLY PROMOTED" at 100% and the fixed threshold's
+  rollout correctly halting at the 5% stage with `ROLLED BACK`.
+- `REFERENCES.md`'s Chapter 9 section is filled in — Fowler/Sato's canary-release bliki
+  post, the Google SRE Workbook's canarying-releases chapter, Docker's own build-best-
+  -practices docs, and OpenClaw's Docker deployment docs — plus the full Docker
+  -verification-limitation note, all verified via live search at build time.
+
+**Next unit:** Unit 11 — `interview_prep/` in full: `question_bank.json` (70+ entries, all
+10 seed scenario/follow-up pairs verbatim plus 5+ variants each, per spec),
+`solutions/question_bank_answers.json`, `mock_interview.ipynb`, `per_chapter_drills.ipynb`.
+This is the first unit that spans multiple deliverable files under one directory rather than
+one notebook + one solutions file — worth re-reading the original spec's exact
+`interview_prep/` requirements closely at the start of that session, since this file's
+own summaries of later units are necessarily compressed. No known data-access risk expected
+(original scenario content, not derived from an external dataset), but the "no citations
+expected" pattern doesn't apply here — check whether any question content requires
+verification against a real source before treating this as citation-free.
