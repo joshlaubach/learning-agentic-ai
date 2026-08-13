@@ -67,10 +67,10 @@ def evaluate_retrieval(queries: list[dict], retrieve_fn, k: int = 3) -> dict:
 
 def faithfulness_score(answer: str, retrieved_texts: list[str]) -> float:
     """Rough faithfulness proxy: what fraction of the answer's significant (non-stopword)
-    words actually appear somewhere in the retrieved context. Not a substitute for a real
-    NLI-based faithfulness metric (see RAGAS, covered in Chapter 3's notebook) — a simple,
-    fully explainable, from-scratch signal for the same underlying question: is this answer
-    actually grounded in what was retrieved, or did the model wander off on its own?"""
+    words appear somewhere in the retrieved context. Not a substitute for a real NLI-based
+    faithfulness metric (see RAGAS, covered in Chapter 3's notebook) — a simple, from-scratch
+    signal for the same question: is this answer grounded in what was retrieved, or did the
+    model wander off on its own?"""
     combined_context = " ".join(retrieved_texts).lower()
     answer_words = set(re.findall(r"[a-z0-9]+", answer.lower()))
     significant_words = answer_words - _STOPWORDS

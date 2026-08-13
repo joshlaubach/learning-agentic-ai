@@ -53,9 +53,9 @@ open it in Jupyter and run all cells.
 
 ## How this compares to a real system
 
-[OpenClaw](https://docs.openclaw.ai/) is a real, viral, production agent system that
-combines the same pieces this capstone does at real scale: retrieval/context assembly, tool
-use, and persistent memory across sessions (its own documented architecture describes a
+[OpenClaw](https://docs.openclaw.ai/) is a real production agent system that combines the
+same pieces this capstone does at real scale: retrieval/context assembly, tool use, and
+persistent memory across sessions (its own documented architecture describes a
 context-assembly stage and a "persist memory" stage as part of its core agentic loop — see
 `REFERENCES.md`'s Chapter 2 entry). It also documents, in its own security guidance, the
 exact class of risk Chapter 6 and this capstone's safeguard address: untrusted external
@@ -64,9 +64,8 @@ OpenClaw's own docs recommend the same layered mitigation (treat external conten
 scope tool access narrowly, gate sensitive actions) this course's Chapter 6 and this
 capstone both implement.
 
-Ava is a small, deliberately simplified version of the same shape of system — the point
-isn't that Ava is production-grade (it isn't; it's a single-agent teaching project with two
-tools), it's that the underlying architecture — retrieval, tool use, memory, and the
-security discipline that has to accompany all three once real users and real tools are
-involved — is the same architecture real, widely-used agent systems actually run in
-production.
+Ava is a small, deliberately simplified version of the same shape of system. The point isn't
+that Ava is production-grade — it isn't; it's a single-agent teaching project with two tools.
+The point is that the underlying architecture (retrieval, tool use, memory, and the security
+discipline that has to accompany all three once real users and real tools are involved) is
+the same architecture real agent systems run in production.
