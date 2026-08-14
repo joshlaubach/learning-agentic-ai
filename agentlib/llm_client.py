@@ -17,8 +17,8 @@ staleness disclaimer, since these move fast):
     $1/$5 per million input/output tokens) on Anthropic, GPT-5.6 Luna (`gpt-5.6-luna`,
     OpenAI's fastest/lowest-cost current tier) on OpenAI. Do not use the bare `"gpt-5.6"`
     alias if you specifically want Luna — it currently routes to the flagship "Sol" tier
-    instead, which is a genuinely easy mistake to make and a good example of why pinning
-    exact model IDs (not aliases) matters in production.
+    instead, which is easy to do by accident and a good reason to pin exact model IDs, not
+    aliases, in production.
   - Stronger tier (`model=` override, used by Chapter 6 and the capstone): Claude Sonnet 5
     (`claude-sonnet-5`, $2/$10 per million tokens — Anthropic made this permanent on
     2026-08-11 rather than the price increase originally planned for September) on

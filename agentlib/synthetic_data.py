@@ -13,10 +13,9 @@ Both are unreachable from this repo's build environment, so:
   - The messy real-world ingestion source is a real file (`anthropic-sdk-python`'s
     `CHANGELOG.md`) instead of SEC EDGAR filings or the Hugging-Face-hosted
     `bigcode/the-stack-github-issues`.
-Both are still genuinely real, unfabricated content — just reached through a different,
-reachable channel. A learner or CI running in an environment with normal internet access can
-still swap these back to the spec's original sources if they prefer; nothing here is
-mock/fake data standing in for real data.
+Both are still real, unfabricated content, just reached through a different, reachable
+channel. A learner or CI running in an environment with normal internet access can still
+swap these back to the spec's original sources if they prefer.
 """
 
 from __future__ import annotations

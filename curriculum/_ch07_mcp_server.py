@@ -1,9 +1,9 @@
 """A real local MCP server, spawned as a subprocess over stdio by
-curriculum/07_tool_integration.ipynb. Not a mock -- this is a genuine tool the notebook's
-MCP client connects to and calls. See PROGRESS.md's Unit 8 notes for why this uses PyPI's
-live JSON API (real, reachable, needs no vendored cache mechanism) rather than the spec's
-originally-suggested GH Archive dataset (Hugging-Face-hosted, unreachable from this build
-environment -- the same class of block noted for SQuAD in Unit 4 and tiktoken in Unit 6).
+curriculum/07_tool_integration.ipynb. Not a mock: the notebook's MCP client connects to it
+and calls it directly. See PROGRESS.md's Unit 8 notes for why this uses PyPI's live JSON API
+(real, reachable, needs no vendored cache mechanism) rather than the spec's originally
+suggested GH Archive dataset (Hugging-Face-hosted, unreachable from this build environment --
+the same class of block noted for SQuAD in Unit 4 and tiktoken in Unit 6).
 """
 
 import json
@@ -23,7 +23,7 @@ mcp = FastMCP("pypi-lookup")
 def get_package_info(package_name: str) -> dict:
     """Look up real package metadata (name, version, summary, license, project URLs) for a
     package on PyPI. Reads from a local cache if present; falls back to a live PyPI query
-    otherwise -- either way, the data returned is genuinely real, never fabricated."""
+    otherwise -- either way, the data returned is real, not fabricated."""
     cache_path = _CACHE_DIR / f"{package_name}.json"
     if cache_path.exists():
         return json.loads(cache_path.read_text())
