@@ -46,16 +46,12 @@ python-dotenv==1.2.2
 anthropic==0.121.0
 openai==1.109.1
 
-# --- Datasets. `datasets` and `huggingface_hub` were pinned here for a GH Archive slice
-# (`open-index/open-github` on Hugging Face) that Unit 8 was going to build and never did —
-# see PROGRESS.md's Unit 8 note. Nothing in this repo imports either one, so they are gone:
-# they were ~200MB of install for a feature that does not exist. Chapter 3's SQuAD sample is
-# fetched via raw.githubusercontent.com (see agentlib/synthetic_data.py) and cached locally,
-# needing only `requests` below.
-#
-# duckdb is left pinned for now: it belonged to the same dropped feature and is likewise
-# unimported, but removing it was not part of the change that removed the other two. ---
-duckdb==1.5.5
+# --- Removed: `datasets`, `huggingface_hub`, and `duckdb`. All three were pinned for a GH
+# Archive slice (`open-index/open-github` on Hugging Face) that Unit 8 was going to build and
+# never did — see PROGRESS.md's Unit 8 note. Nothing in this repo imports any of them, so
+# they were a few hundred MB of install for a feature that does not exist. Chapter 3's SQuAD
+# sample is fetched via raw.githubusercontent.com (see agentlib/synthetic_data.py) and cached
+# locally, needing only `requests` below. ---
 
 # --- MCP (Chapter 7) ---
 mcp==1.29.0
