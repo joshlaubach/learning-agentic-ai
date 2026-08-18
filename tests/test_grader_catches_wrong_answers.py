@@ -340,5 +340,288 @@ def test_ch02_leak_check_rejects_substring_sniffing():
     _rejects("ch02-leak-check", wrong)
 
 
+# --- Chapter 4 ---
+
+
+class _ApiErr(Exception):
+    def __init__(self, status_code):
+        super().__init__(f"{status_code}: api error")
+        self.status_code = status_code
+
+
+def test_ch04_ttl_cache_rejects_checking_the_ttl_on_write():
+    """Plausible wrong answer: evict stale keys when you write, and let reads trust whatever
+    is in the store. Every test that writes and immediately reads passes; an entry written
+    once and read six hours later is served stale forever, because nothing between those two
+    moments ever prompted the cache to reconsider it."""
+
+    class Wrong:
+        def __init__(self, ttl_seconds):
+            self.ttl = ttl_seconds
+            self.store = {}
+
+        def get(self, key, now):
+            if key in self.store:
+                value, cached_at = self.store[key]
+                return value, cached_at
+            return None, None
+
+        def set(self, key, value, now):
+            for k, (_, cached_at) in list(self.store.items()):
+                if now - cached_at >= self.ttl:
+                    del self.store[k]
+            self.store[key] = (value, now)
+
+        def invalidate(self, key):
+            self.store.pop(key, None)
+
+    _rejects("ch04-ttl-cache", Wrong)
+    _accepts("ch04-ttl-cache")
+
+
+def test_ch04_backoff_rejects_linear_growth():
+    """Plausible wrong answer: base_delay * attempt. Grows, backs off, logs correctly, and
+    over three attempts produces 1/2/3 against the correct 1/2/4 -- close enough to look
+    right and not nearly fast enough to outrun a filling queue."""
+    import random as _random
+
+    def wrong(fn, max_retries=6, base_delay=1.0, jitter=0.5, seed=1, sleep_fn=None,
+              retry_predicate=None):
+        rng = _random.Random(seed)
+
+        def wrapped(*args, **kwargs):
+            attempts_log, last_exc = [], None
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return fn(*args, **kwargs), attempts_log
+                except Exception as exc:
+                    last_exc = exc
+                    delay = base_delay * attempt + rng.uniform(0, jitter)
+                    attempts_log.append({"attempt": attempt, "error": str(exc),
+                                         "backoff_s": round(delay, 2)})
+                    if sleep_fn is not None:
+                        sleep_fn(delay)
+            raise RuntimeError(f"gave up after {max_retries} attempts") from last_exc
+
+        return wrapped
+
+    _rejects("ch04-backoff", wrong)
+    _accepts("ch04-backoff")
+
+
+def test_ch04_backoff_rejects_sleeping_before_the_first_attempt():
+    """Plausible wrong answer: sleep at the top of the loop so the retry delay is "already
+    applied" when the call happens. Correct on every retry, and it adds a full base_delay of
+    latency to every healthy request in production."""
+    import random as _random
+
+    def wrong(fn, max_retries=6, base_delay=1.0, jitter=0.5, seed=1, sleep_fn=None,
+              retry_predicate=None):
+        rng = _random.Random(seed)
+
+        def wrapped(*args, **kwargs):
+            attempts_log, last_exc = [], None
+            for attempt in range(1, max_retries + 1):
+                delay = base_delay * (2 ** (attempt - 1)) + rng.uniform(0, jitter)
+                if sleep_fn is not None:
+                    sleep_fn(delay)
+                try:
+                    return fn(*args, **kwargs), attempts_log
+                except Exception as exc:
+                    last_exc = exc
+                    attempts_log.append({"attempt": attempt, "error": str(exc),
+                                         "backoff_s": round(delay, 2)})
+            raise RuntimeError(f"gave up after {max_retries} attempts") from last_exc
+
+        return wrapped
+
+    _rejects("ch04-backoff", wrong)
+
+
+def test_ch04_no_retry_4xx_rejects_blanket_4xx_refusal():
+    """Plausible wrong answer: retry 5xx, refuse the whole 4xx range. Reads like the textbook
+    rule and throws away the two 4xx statuses that most need a retry -- 429 rate limits and
+    408 timeouts."""
+
+    def wrong(error):
+        status = getattr(error, "status_code", None)
+        if status is None:
+            return True
+        return not 400 <= status < 500
+
+    _rejects("ch04-no-retry-4xx", wrong)
+    _accepts("ch04-no-retry-4xx")
+
+
+def test_ch04_no_retry_4xx_rejects_retrying_everything():
+    """Plausible wrong answer: the predicate nobody got around to writing. Retries a 400
+    five times, so the caller waits through the full backoff schedule to be told what the
+    first response already said."""
+
+    def wrong(error):
+        return True
+
+    _rejects("ch04-no-retry-4xx", wrong)
+
+
+def test_ch04_circuit_breaker_rejects_never_half_opening():
+    """Plausible wrong answer: open on the threshold, fail fast while open, and stop there.
+    Everything about the outage is handled correctly -- the dependency stops being hammered,
+    the caller fails fast -- and the circuit never re-tests anything, so the outage outlives
+    its own cause and only a redeploy clears it."""
+
+    class Wrong:
+        def __init__(self, failure_threshold=3, cooldown=5):
+            self.failure_threshold = failure_threshold
+            self.cooldown = cooldown
+            self.failure_count = 0
+            self.state = "closed"
+            self.opened_at = None
+
+        def call(self, fn, now):
+            if self.state == "open":
+                raise RuntimeError("circuit open -- failing fast")
+            try:
+                result = fn()
+            except Exception:
+                self.failure_count += 1
+                if self.failure_count >= self.failure_threshold:
+                    self.state = "open"
+                    self.opened_at = now
+                raise
+            else:
+                self.failure_count = 0
+                self.state = "closed"
+                return result
+
+    _rejects("ch04-circuit-breaker", Wrong)
+    _accepts("ch04-circuit-breaker")
+
+
+def test_ch04_circuit_breaker_rejects_counting_lifetime_failures():
+    """Plausible wrong answer: count every failure ever seen instead of consecutive ones. A
+    service with a 1% error rate trips the breaker eventually no matter how healthy it is."""
+
+    class Wrong:
+        def __init__(self, failure_threshold=3, cooldown=5):
+            self.failure_threshold = failure_threshold
+            self.cooldown = cooldown
+            self.failure_count = 0
+            self.state = "closed"
+            self.opened_at = None
+
+        def call(self, fn, now):
+            if self.state == "open":
+                if now - self.opened_at >= self.cooldown:
+                    self.state = "half-open"
+                else:
+                    raise RuntimeError("circuit open -- failing fast")
+            try:
+                result = fn()
+            except Exception:
+                self.failure_count += 1
+                if self.state == "half-open" or self.failure_count >= self.failure_threshold:
+                    self.state = "open"
+                    self.opened_at = now
+                raise
+            else:
+                self.state = "closed"  # state reset, counter deliberately not
+                return result
+
+    _rejects("ch04-circuit-breaker", Wrong)
+
+
+# --- Chapter 5 ---
+
+
+def test_ch05_token_cost_rejects_one_price_for_input_and_output():
+    """Plausible wrong answer: a single per-token price. Output is 5x input in every real
+    price sheet, so this understates the cost of exactly the long, verbose responses a cost
+    model exists to catch."""
+
+    def wrong(input_tokens, output_tokens, cached_prefix_tokens, cache_hit,
+              input_price=3.0, output_price=15.0, cache_price=0.30):
+        fresh = input_tokens - cached_prefix_tokens if cache_hit else input_tokens
+        cost = (fresh + output_tokens) / 1e6 * input_price
+        if cache_hit:
+            cost += cached_prefix_tokens / 1e6 * cache_price
+        return {"cache_hit": cache_hit, "fresh_input_tokens": fresh,
+                "cost_usd": round(cost, 6)}
+
+    _rejects("ch05-token-cost", wrong)
+    _accepts("ch05-token-cost")
+
+
+def test_ch05_token_cost_rejects_treating_cached_tokens_as_free():
+    """Plausible wrong answer: a cache hit means you don't pay for the prefix. Directionally
+    right, and it under-reports every cached call -- a cache read is discounted, not free."""
+
+    def wrong(input_tokens, output_tokens, cached_prefix_tokens, cache_hit,
+              input_price=3.0, output_price=15.0, cache_price=0.30):
+        fresh = input_tokens - cached_prefix_tokens if cache_hit else input_tokens
+        cost = fresh / 1e6 * input_price + output_tokens / 1e6 * output_price
+        return {"cache_hit": cache_hit, "fresh_input_tokens": fresh,
+                "cost_usd": round(cost, 6)}
+
+    _rejects("ch05-token-cost", wrong)
+
+
+def test_ch05_latency_profile_rejects_reporting_means():
+    """Plausible wrong answer: report each stage's mean latency instead of its share of the
+    total. A perfectly reasonable statistic answering a different question -- it tells you a
+    stage is slow, never which stage a regression landed in."""
+
+    def wrong(requests):
+        stages = ["queue_time_ms", "network_time_ms", "inference_time_ms", "generation_time_ms"]
+        n = len(requests) or 1
+        totals = {s: sum(r[s] for r in requests) for s in stages}
+        return {s: {"total_ms": totals[s], "pct": totals[s] / n} for s in stages}
+
+    _rejects("ch05-latency-profile", wrong)
+    _accepts("ch05-latency-profile")
+
+
+def test_ch05_latency_profile_rejects_unguarded_division():
+    """Plausible wrong answer: correct share arithmetic with nothing guarding an idle
+    window. A profiler handed a quiet 30 seconds raises ZeroDivisionError instead of
+    reporting zeros."""
+
+    def wrong(requests):
+        stages = ["queue_time_ms", "network_time_ms", "inference_time_ms", "generation_time_ms"]
+        totals = {s: sum(r[s] for r in requests) for s in stages}
+        grand = sum(totals.values())
+        return {s: {"total_ms": totals[s], "pct": totals[s] / grand * 100} for s in stages}
+
+    _rejects("ch05-latency-profile", wrong)
+
+
+def test_ch05_router_rejects_routing_on_length_alone():
+    """Plausible wrong answer: escalate long prompts, ignore requires_tool_use. Correct on
+    every example where the two signals agree, and it silently sends every short tool-using
+    request -- the ones where a weak model's mistakes compound -- to the cheap tier."""
+    from agentlib import llm_client as _llm
+
+    def wrong(prompt, requires_tool_use=False):
+        if len(prompt.split()) > 80:
+            return _llm.STRONG_MODELS[_llm.LLM_PROVIDER]
+        return _llm.DEFAULT_MODELS[_llm.LLM_PROVIDER]
+
+    _rejects("ch05-router", wrong)
+    _accepts("ch05-router")
+
+
+def test_ch05_router_rejects_measuring_length_in_characters():
+    """Plausible wrong answer: len(prompt) > 80 rather than a word count. Three long words
+    trip an 80-character threshold, so short technical prompts get escalated for nothing."""
+    from agentlib import llm_client as _llm
+
+    def wrong(prompt, requires_tool_use=False):
+        if requires_tool_use or len(prompt) > 80:
+            return _llm.STRONG_MODELS[_llm.LLM_PROVIDER]
+        return _llm.DEFAULT_MODELS[_llm.LLM_PROVIDER]
+
+    _rejects("ch05-router", wrong)
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
