@@ -874,5 +874,234 @@ def test_ch07_failure_classifier_rejects_conflating_missing_with_mistyped():
     _rejects("ch07-failure-classifier", wrong)
 
 
+# --- Chapter 8 ---
+
+
+def test_ch08_design_doc_rejects_a_blank_field():
+    """Plausible wrong answer: eight questions answered well and one left empty. Nobody skips
+    a field on purpose -- it goes blank because it was the one they had least to say about,
+    which is exactly the one an interviewer picks."""
+    from dataclasses import replace
+
+    from solutions.reference.ch08 import DESIGN_DOC
+
+    _rejects("ch08-design-doc", replace(DESIGN_DOC, security_surface=""))
+    _accepts("ch08-design-doc")
+
+
+def test_ch08_design_doc_rejects_one_line_answers():
+    """Plausible wrong answer: a phrase per heading. Reads as a complete design doc at a
+    glance and collapses on the first follow-up question."""
+    from dataclasses import fields, replace
+
+    from solutions.reference.ch08 import DESIGN_DOC
+
+    thin = replace(
+        DESIGN_DOC,
+        **{
+            f.name: "Handled with standard patterns."
+            for f in fields(DESIGN_DOC)
+            if f.name != "scenario"
+        },
+    )
+    _rejects("ch08-design-doc", thin)
+
+
+def test_ch08_design_doc_rejects_the_same_answer_nine_times():
+    """Plausible wrong answer: one long, genuinely good paragraph pasted into every field. It
+    clears any per-field word count while answering one question, not nine."""
+    from dataclasses import fields, replace
+
+    from solutions.reference.ch08 import DESIGN_DOC
+
+    duplicated = replace(
+        DESIGN_DOC,
+        **{
+            f.name: DESIGN_DOC.control_flow
+            for f in fields(DESIGN_DOC)
+            if f.name != "scenario"
+        },
+    )
+    _rejects("ch08-design-doc", duplicated)
+
+
+def test_ch08_design_doc_rejects_a_budget_with_no_numbers():
+    """Plausible wrong answer: a fluent paragraph about caching and routing that never
+    commits to a latency target or a cost per request. A budget without a number is a
+    preference."""
+    from dataclasses import replace
+
+    from solutions.reference.ch08 import DESIGN_DOC
+
+    vague = replace(
+        DESIGN_DOC,
+        cost_latency_budget=(
+            "We would keep latency low and costs reasonable by caching the system prompt, "
+            "which is reused on every call, and by routing simple informational requests to "
+            "the cheaper model tier while reserving the stronger one for anything that "
+            "touches money. Both are standard levers and both apply cleanly here, so the "
+            "spend should stay well within what the team is comfortable approving."
+        ),
+    )
+    _rejects("ch08-design-doc", vague)
+
+
+def test_ch08_no_agent_case_rejects_naming_only_one_reason():
+    """Plausible wrong answer: the determinism argument, made well and at length. Correct,
+    and it is one of five -- an answer that goes deep on the first reason it thought of."""
+    one_reason = (
+        "I would push back on using an agent here because the task is almost certainly "
+        "deterministic. Once you write down the decision the agent would supposedly be "
+        "making, it usually turns out to be an if/elif chain over a handful of cases that "
+        "the team already understands completely. Plain code is faster, cheaper, and "
+        "testable, and it does not drag a nondeterministic component into a system that "
+        "did not have one. It also keeps the entire prompt-injection threat model out of "
+        "scope, which is a real saving and not just a theoretical one. So I would write the "
+        "rules out explicitly, cover them with unit tests, and ship that instead. If the "
+        "cases genuinely proliferate later, that is the point to revisit it, and by then "
+        "there would be real data about which branches actually fire."
+    )
+    _rejects("ch08-no-agent-case", one_reason)
+    _accepts("ch08-no-agent-case")
+
+
+def test_ch08_no_agent_case_rejects_a_one_sentence_answer():
+    """Plausible wrong answer: the right idea, too short to demonstrate it."""
+    _rejects("ch08-no-agent-case", "Don't use an agent if the task is deterministic.")
+
+
+# --- Chapter 9 ---
+
+
+def test_ch09_prompt_version_rejects_mutating_the_current_version_in_place():
+    """Plausible wrong answer: publish overwrites the stored text. Every test that writes a
+    prompt and reads it straight back passes. It fails exactly once, in production, on the
+    day someone rolls back -- the pointer moves and the text it points at was overwritten
+    weeks ago, so the rollback reports success and changes nothing."""
+
+    class WrongVersion:
+        def __init__(self, version_id, text):
+            self.version_id = version_id
+            self.text = text
+
+    class Wrong:
+        def __init__(self):
+            self._versions = {}
+            self.current_version = None
+            self.history = []
+
+        def publish(self, version_id, text):
+            if version_id in self._versions:
+                self._versions[version_id].text = text  # "just updating it"
+                return self._versions[version_id]
+            pv = WrongVersion(version_id, text)
+            self._versions[version_id] = pv
+            return pv
+
+        def promote(self, version_id):
+            if version_id not in self._versions:
+                raise ValueError(f"no such version: {version_id!r}")
+            self.current_version = version_id
+            self.history.append(version_id)
+
+        def get(self, version_id):
+            return self._versions[version_id]
+
+    _rejects("ch09-prompt-version", Wrong)
+    _accepts("ch09-prompt-version")
+
+
+def test_ch09_prompt_version_rejects_deduplicating_the_history():
+    """Plausible wrong answer: don't append to history if that version is already the current
+    one, or already in the list. Tidier, and it deletes the rollback -- the single entry an
+    incident review is looking for."""
+    from solutions.reference.ch09 import PromptVersion
+
+    class Wrong:
+        def __init__(self):
+            self._versions = {}
+            self.current_version = None
+            self.history = []
+
+        def publish(self, version_id, text):
+            if version_id in self._versions:
+                raise ValueError(f"version {version_id!r} already exists")
+            pv = PromptVersion(version_id, text)
+            self._versions[version_id] = pv
+            return pv
+
+        def promote(self, version_id):
+            if version_id not in self._versions:
+                raise ValueError(f"no such version: {version_id!r}")
+            self.current_version = version_id
+            if version_id not in self.history:
+                self.history.append(version_id)
+
+        def get(self, version_id):
+            return self._versions[version_id]
+
+    _rejects("ch09-prompt-version", Wrong)
+
+
+def test_ch09_canary_split_rejects_an_unseeded_random_split():
+    """Plausible wrong answer: random() < pct/100. Produces exactly the right SHARE of
+    traffic, which is what makes it convincing -- and it re-rolls on every call, so one user
+    flips between prompt versions mid-conversation, the metrics mix both populations, and no
+    bug report is reproducible."""
+    import random as _random
+
+    def wrong(request_id, stable_version, canary_version, canary_pct):
+        return canary_version if _random.random() * 100 < canary_pct else stable_version
+
+    _rejects("ch09-canary-split", wrong)
+    _accepts("ch09-canary-split")
+
+
+def test_ch09_canary_split_rejects_a_reshuffling_split():
+    """Plausible wrong answer: seed a PRNG with the request id. Deterministic per id, so it
+    survives the obvious stability test -- and the cohort is reshuffled at every percentage,
+    so ramping 5% to 25% moves people OFF the canary as well as onto it."""
+    import random as _random
+
+    def wrong(request_id, stable_version, canary_version, canary_pct):
+        rng = _random.Random(f"{request_id}-{canary_pct}")
+        return canary_version if rng.random() * 100 < canary_pct else stable_version
+
+    _rejects("ch09-canary-split", wrong)
+
+
+def test_ch09_drift_detect_rejects_alerting_on_any_change():
+    """Plausible wrong answer: any difference at all is unhealthy. Catches every real
+    regression, which is why it looks safe -- and it fires on every rollout, because two
+    500-request samples never produce identical rates. A rollback signal that cries wolf gets
+    muted inside a week."""
+
+    def wrong(stable_rate, canary_rate, threshold=0.05):
+        return stable_rate == canary_rate
+
+    _rejects("ch09-drift-detect", wrong)
+    _accepts("ch09-drift-detect")
+
+
+def test_ch09_drift_detect_rejects_the_uncalibrated_default():
+    """Plausible wrong answer: the chapter's own bug, left in place. 0.5 is a round,
+    conservative-sounding number that only trips above a fifty-point swing."""
+
+    def wrong(stable_rate, canary_rate, threshold=0.5):
+        return abs(canary_rate - stable_rate) < threshold
+
+    _rejects("ch09-drift-detect", wrong)
+
+
+def test_ch09_drift_detect_rejects_a_one_directional_comparison():
+    """Plausible wrong answer: only flag the canary getting worse. An unexplained thirty-point
+    improvement means something changed that nobody intended, and it sails through."""
+
+    def wrong(stable_rate, canary_rate, threshold=0.05):
+        return (canary_rate - stable_rate) < threshold
+
+    _rejects("ch09-drift-detect", wrong)
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
