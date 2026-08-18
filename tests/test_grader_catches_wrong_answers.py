@@ -1103,5 +1103,112 @@ def test_ch09_drift_detect_rejects_a_one_directional_comparison():
     _rejects("ch09-drift-detect", wrong)
 
 
+# --- The five written diagnoses (Ch5 and Ch9) ---
+#
+# A written diagnosis cannot be graded against a model answer, so what these suites check is
+# whether the answer names the cause the data supports. The wrong answers below are the
+# point: each one is fluent, confident, the right length, and reaches the conclusion a
+# competent engineer actually reaches first -- and the data does not support any of them.
+
+
+def test_ch05_duplicate_calls_rejects_blaming_query_complexity():
+    """Plausible wrong answer: the token counts went up because the questions got harder. It
+    is the first thing anyone thinks, it explains the symptom, and it is ruled out by the
+    fact that nothing changed about what was being asked."""
+    wrong = (
+        "Looking at the slice, the input and output token counts are clearly elevated "
+        "compared to the surrounding requests. The most likely explanation is that this "
+        "batch of users simply asked harder questions than usual -- longer prompts, more "
+        "complex requests, more context needed to answer them. Query complexity varies "
+        "naturally over the course of a day and a run of more difficult questions would "
+        "produce exactly this shape. I would not treat it as a bug; I would keep an eye on "
+        "whether the pattern persists and consider whether the pricing model needs to "
+        "account for heavier usage during peak periods."
+    )
+    _rejects("ch05-diagnose-duplicate-calls", wrong)
+    _accepts("ch05-diagnose-duplicate-calls")
+
+
+def test_ch05_context_growth_rejects_reaching_for_a_cheaper_model():
+    """Plausible wrong answer: costs are climbing, so move to a cheaper tier. Reasonable
+    cost-engineering instinct, and it makes an unbounded context cheaper per token while
+    leaving it unbounded -- it postpones the context-window wall instead of removing it."""
+    wrong = (
+        "Token spend is rising steadily across this slice and the trend does not look like "
+        "it is going to level off on its own. The most direct lever available is model "
+        "selection: routing this traffic to a cheaper model tier would cut the per-token "
+        "cost substantially and bring the spend back into line without requiring any change "
+        "to the application code. Chapter 5 covered routing for exactly this kind of "
+        "situation. I would move this workload to the cheap tier, measure the saving over a "
+        "week, and revisit if the numbers still look wrong afterwards."
+    )
+    _rejects("ch05-diagnose-context-growth", wrong)
+    _accepts("ch05-diagnose-context-growth")
+
+
+def test_ch05_queueing_rejects_blaming_inference():
+    """Plausible wrong answer: latency jumped six-fold, so inference got slower -- add GPUs.
+    The notebook calls this out by name as the reflex answer, and it is only accidentally
+    right: more GPUs help by adding queue capacity, not because inference changed."""
+    wrong = (
+        "A jump from roughly two seconds to twelve seconds is a very large regression and "
+        "the most likely cause is that inference got slower. That usually means either the "
+        "model is under more load than the hardware can serve or the requests themselves "
+        "have become more expensive to run. The standard remedy here is capacity: add more "
+        "GPUs so that inference has the headroom it needs, and confirm afterwards that "
+        "latency has come back down to its previous baseline. If it has not, the next thing "
+        "to look at would be whether the model version changed recently."
+    )
+    _rejects("ch05-diagnose-queueing", wrong)
+    _accepts("ch05-diagnose-queueing")
+
+
+def test_ch09_mutable_prompt_rejects_a_process_fix():
+    """Plausible wrong answer: someone edited the prompt in place, so tighten the process.
+    A process answer to a structural problem -- the store still allows the edit, so the edit
+    still happens, by someone tired, at the wrong hour."""
+    wrong = (
+        "What happened here is that somebody published over an existing prompt during a "
+        "deploy rather than creating a new one, and the rollback then did not restore the "
+        "behaviour anyone expected. This is fundamentally a discipline problem. I would add "
+        "a code review requirement on any change that touches a published prompt, write up "
+        "the incident so the team understands why it matters, and make sure whoever is on "
+        "call is trained to be more careful about publishing. With a clear process and a "
+        "second pair of eyes on every prompt change, this should not happen again."
+    )
+    _rejects("ch09-diagnose-mutable-prompt", wrong)
+    _accepts("ch09-diagnose-mutable-prompt")
+
+
+def test_ch09_threshold_rejects_blaming_the_rollout_process():
+    """Plausible wrong answer: the regression reached 100% of traffic, so the rollout process
+    needs more gates. The drill explicitly asks what is wrong with the FUNCTION -- and the
+    rollout did exactly what it was told, which was that the canary looked healthy."""
+    wrong = (
+        "The core problem is that a regression made it all the way to full traffic without "
+        "anyone catching it, which points at the rollout process rather than at any one "
+        "piece of code. I would add more stages to the progressive rollout so that each step "
+        "exposes a smaller fraction of users, slow the whole thing down so there is more "
+        "time to observe between stages, and require a manual review before the final "
+        "promotion to one hundred percent. A human in the loop at the last gate would have "
+        "stopped this from shipping to everybody."
+    )
+    _rejects("ch09-diagnose-loose-threshold", wrong)
+    _accepts("ch09-diagnose-loose-threshold")
+
+
+def test_written_diagnoses_reject_a_one_line_answer():
+    """Plausible wrong answer across all five: the right conclusion, stated in a sentence.
+    Correct and unpersuasive -- the reasoning is the part an interviewer asks about."""
+    for task_id, terse in [
+        ("ch05-diagnose-duplicate-calls", "Looks like duplicate calls; add idempotency."),
+        ("ch05-diagnose-context-growth", "The context is growing; add a sliding window."),
+        ("ch05-diagnose-queueing", "It's queueing, not inference. Add backpressure."),
+        ("ch09-diagnose-mutable-prompt", "The versions are mutable; make them immutable."),
+        ("ch09-diagnose-loose-threshold", "The threshold is too loose; calibrate it."),
+    ]:
+        _rejects(task_id, terse)
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
