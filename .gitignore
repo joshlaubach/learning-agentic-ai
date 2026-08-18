@@ -20,6 +20,10 @@ ENV/
 # Jupyter
 .ipynb_checkpoints/
 
+# Autograder progress, written by agentlib.grading.check() on every graded cell run.
+# Local-only: it records how far *this* learner has got, so it must never be committed.
+.progress.json
+
 # pytest / coverage
 .pytest_cache/
 .coverage
