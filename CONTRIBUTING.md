@@ -25,7 +25,6 @@ Every entry follows this shape:
   "format": "scenario_first",
   "scenario": "Your RAG system returns confident but wrong answers.",
   "follow_up": "Which metric tells you whether retrieval or generation is failing?",
-  "key_concepts": ["faithfulness", "recall@k", "groundedness"],
   "grounded_in_real_incident": false,
   "source_note": null
 }
@@ -40,8 +39,21 @@ Field notes:
 - `format`: one of `scenario_first`, `question_first`, `slack_snippet`, or
   `stakeholder_quote`. Please don't add a fifth `scenario_first` entry in a row; the bank is
   deliberately varied so it doesn't read as templated.
-- `key_concepts`: 2–4 short tags used only for the mock interview's lightweight
-  keyword-presence check. This is not the place for an answer.
+- `key_concepts` does NOT live in this file. A learner browsing `question_bank.json` should
+  not be handed the answer skeleton to all 93 questions along with the questions, so the tags
+  live in `solutions/question_bank_answers.json` alongside the written answer, keyed by the
+  same `id`. Add both halves there when you add a question:
+
+  ```json
+  "rag-013": {
+    "key_concepts": ["faithfulness", "recall@k", "groundedness"],
+    "answer": "..."
+  }
+  ```
+
+  2–4 short tags, used only for the drill notebooks' lightweight keyword-presence check,
+  which runs after the learner has committed to an answer. Every question needs an entry;
+  `tests/test_agentlib.py` asserts neither side has orphans.
 - `grounded_in_real_incident` / `source_note`: set `true` and link a source only if the
   scenario is modeled on a real, publicly documented incident (a postmortem, a post-incident
   writeup). Paraphrase the failure pattern in your own words; never quote or closely mirror

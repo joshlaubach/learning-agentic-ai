@@ -35,6 +35,16 @@ and do not do more than one unit per session even with budget left over.
       local MCP server over stdio; pulls and caches a filtered GH Archive slice
       (`open-index/open-github`) — pin the exact date range used, verified against the
       dataset card at build time.
+      > **Partially delivered.** The MCP half shipped and is real: `curriculum/_ch07_mcp_server.py`
+      > is a genuine stdio server, and Chapter 7 connects to it over a real transport. The GH
+      > Archive slice was never built. The chapter's tool reads from a small committed cache of
+      > real PyPI metadata (`data/pypi_cache/`, three packages) instead, which serves the same
+      > teaching purpose — a real external tool with a real schema — without the Hugging Face
+      > reachability problem this environment has (see Unit 4's notes). This box stayed checked
+      > with the unbuilt half unmarked; it is annotated here rather than unchecked because the
+      > chapter itself is complete and shipped. `datasets` and `huggingface_hub` were dropped
+      > from `requirements.txt` in the same pass, since nothing imports them; `duckdb`, pinned
+      > for the same dropped feature, is likewise unimported and still pinned.
 - [x] **Unit 9 — Chapter 8: System Design and Engineering Judgment.** Notebook + solutions
       file. Mostly markdown; blank design-doc templates in the notebook, fully worked model
       versions only in `solutions/ch08_system_design_judgment_answers.md`.

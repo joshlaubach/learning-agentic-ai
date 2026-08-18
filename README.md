@@ -45,7 +45,8 @@ similarity and vector math, core statistics, working in Jupyter.
 
 Five areas are worth a 1-2 hour gut-check if you can't already answer confidently. Async
 Python: `async def` vs. a regular function, when you need `await`, and what happens if you
-don't (this comes up in Chapter 1's multi-agent work and Chapter 2's subagent dispatch).
+don't (this comes up in Chapter 7's MCP client and again in the capstone; Chapters 1-6 are
+entirely synchronous).
 Testing: writing a `pytest` test with `assert`, and unit vs. integration tests, which
 Chapter 7's integration tests build on. Environment management: virtual environments, and
 what a `.env` file is for and why it's never committed (Chapter 1 walks through this fully
@@ -88,7 +89,7 @@ much more detail than this README. Start there if any of the above is unfamiliar
 ### Real API key vs. mock mode
 
 This course is meant to be run with a real Anthropic or OpenAI API key. That's the primary,
-intended experience: every notebook in Chapters 1, 2, 3, 4, 6, 7, and the capstone calls a
+intended experience: every notebook in Chapters 1, 2, 3, 4, 6, and the capstone calls a
 real model by default once you've completed Chapter 1's one-time setup (provider account,
 spend limit, API key, `.env`). A deterministic mock/offline fallback exists in every notebook
 too, but only for two reasons: accessibility for learners without budget, and so CI can run
@@ -116,7 +117,14 @@ or years after it was built.
 | 8 | [System Design and Engineering Judgment](curriculum/08_system_design_judgment.ipynb) | ~5 hrs | A repeatable system-design framework, blank design-doc studios, judgment prompts, "when would you NOT use an agent at all" |
 | 9 | [LLMOps and Deployment](curriculum/09_llmops_deployment.ipynb) | ~6 hrs | Canary releases, shadow deployment, prompt versioning, drift detection, rollback, containerizing the curriculum's agent |
 
-Target total time investment across the whole repo: roughly 75–90 hours.
+The chapter times above sum to about 62 hours. Add roughly 8-12 hours for the capstone
+(it is a specification with an acceptance suite, not a walkthrough) and however much you
+spend in `interview_prep/`, which is designed to be revisited rather than completed once.
+Call it **70-75 hours** for a full pass.
+
+These are working estimates, not measurements. Every chapter now ships graded exercises
+that fail until you implement them, so how long a chapter takes depends far more on how
+much you fight the exercises than on how fast you read.
 
 ### Interview prep (separate track)
 
