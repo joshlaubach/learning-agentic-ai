@@ -15,6 +15,7 @@ import agentlib.loop_guards
 import agentlib.synthetic_data as synthetic_data
 import agentlib.tools
 import agentlib.tracing
+from solutions.reference import ch03 as ref_ch03
 
 
 def test_agentlib_package_imports():
@@ -148,22 +149,27 @@ def test_tracer_reset_clears_spans():
 # --- agentlib.eval_metrics ---
 
 
+# precision@k / recall@k / MRR are graded builds as of the autograder conversion: the
+# learner writes them in Chapter 3 and the model answers live in solutions/reference/ch03.py,
+# so these tests point there. The full case suites are in agentlib/tasks_ch03.py.
+
+
 def test_precision_recall_at_k():
     retrieved = ["a", "b", "c", "d"]
     relevant = {"b", "d", "z"}
-    assert eval_metrics.precision_at_k(retrieved, relevant, k=2) == 0.5  # b in top 2
-    assert eval_metrics.precision_at_k(retrieved, relevant, k=4) == 0.5  # b, d in top 4
-    assert eval_metrics.recall_at_k(retrieved, relevant, k=4) == pytest.approx(2 / 3)
+    assert ref_ch03.precision_at_k(retrieved, relevant, k=2) == 0.5  # b in top 2
+    assert ref_ch03.precision_at_k(retrieved, relevant, k=4) == 0.5  # b, d in top 4
+    assert ref_ch03.recall_at_k(retrieved, relevant, k=4) == pytest.approx(2 / 3)
 
 
 def test_precision_at_k_empty_top_k_is_zero():
-    assert eval_metrics.precision_at_k([], {"a"}, k=3) == 0.0
+    assert ref_ch03.precision_at_k([], {"a"}, k=3) == 0.0
 
 
 def test_mean_reciprocal_rank():
-    assert eval_metrics.mean_reciprocal_rank(["a", "b", "c"], {"b"}) == 0.5
-    assert eval_metrics.mean_reciprocal_rank(["a", "b", "c"], {"a"}) == 1.0
-    assert eval_metrics.mean_reciprocal_rank(["a", "b", "c"], {"z"}) == 0.0
+    assert ref_ch03.mean_reciprocal_rank(["a", "b", "c"], {"b"}) == 0.5
+    assert ref_ch03.mean_reciprocal_rank(["a", "b", "c"], {"a"}) == 1.0
+    assert ref_ch03.mean_reciprocal_rank(["a", "b", "c"], {"z"}) == 0.0
 
 
 def test_evaluate_retrieval_aggregates_across_queries():
@@ -175,7 +181,14 @@ def test_evaluate_retrieval_aggregates_across_queries():
     def retrieve_fn(query, k):
         return {"q1": ["a", "b"], "q2": ["x", "y"]}[query]
 
-    result = eval_metrics.evaluate_retrieval(queries, retrieve_fn, k=2)
+    result = eval_metrics.evaluate_retrieval(
+        queries,
+        retrieve_fn,
+        k=2,
+        precision_fn=ref_ch03.precision_at_k,
+        recall_fn=ref_ch03.recall_at_k,
+        mrr_fn=ref_ch03.mean_reciprocal_rank,
+    )
     assert result["n_queries"] == 2
     assert result["mrr"] == 0.5  # q1 hits at rank 1 (mrr=1.0), q2 never hits (mrr=0.0)
 

@@ -117,6 +117,14 @@ def check(task_id: str, fn=None):
 
     Prints a one-line pass summary, or raises AssertionError naming every failed case, the
     call that failed, and what went wrong.
+
+    Returns whatever was graded, so a graded cell can rebind its own name to the result:
+
+        my_function = check("chNN-task-id", my_function)
+
+    In learner mode that returns `fn` unchanged and the rebinding is a no-op. In reference
+    mode it returns the model answer, which is how the rest of a notebook keeps running
+    under CI even though its graded cells are still empty stubs.
     """
     registry = load_all_tasks()
     if task_id not in registry:
@@ -153,6 +161,7 @@ def check(task_id: str, fn=None):
             + "\n\nFix the function above and re-run this cell."
         )
     print(f"{task_id}: {n}/{n} checks passed.")
+    return target
 
 
 def _last_call(probe) -> str:
