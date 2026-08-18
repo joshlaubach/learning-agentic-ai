@@ -36,11 +36,11 @@ Field notes:
   `sec-`) and a zero-padded number that doesn't collide with an existing entry.
 - `chapter`: the integer 1–9 this question maps to most closely. Chapter 8 (system design) or
   a cross-chapter question is fine too; use your judgment.
-- `format`: one of `scenario_first`, `question_first`, `slack_snippet`, or
+- `format`: one of `scenario_first`, `question_first`, `slack_message`, or
   `stakeholder_quote`. Please don't add a fifth `scenario_first` entry in a row; the bank is
   deliberately varied so it doesn't read as templated.
 - `key_concepts` does NOT live in this file. A learner browsing `question_bank.json` should
-  not be handed the answer skeleton to all 93 questions along with the questions, so the tags
+  not be handed the answer skeleton to every question along with the questions, so the tags
   live in `solutions/question_bank_answers.json` alongside the written answer, keyed by the
   same `id`. Add both halves there when you add a question:
 
