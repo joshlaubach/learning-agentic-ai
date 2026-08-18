@@ -18,6 +18,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check graded cells ship with cleared outputs
+        run: python tools/check_outputs.py
+
       - name: Run full test suite (notebooks + agentlib unit tests)
         run: >
           pytest --nbmake curriculum/*.ipynb interview_prep/*.ipynb capstone/*.ipynb tests/
@@ -27,3 +30,8 @@ jobs:
           # this repo's own build sessions verified locally. See README's "AI-assisted
           # content and human review" section and PROGRESS.md's Unit 13 notes.
           CI: "true"
+          # Graded cells raise NotImplementedError on a fresh clone, which is the whole point
+          # of them -- so CI grades the reference implementations in solutions/reference/
+          # instead of the empty learner stubs. Side effect worth having: every CI run proves
+          # each case suite is passable and each reference answer is still correct.
+          GRADER_MODE: reference

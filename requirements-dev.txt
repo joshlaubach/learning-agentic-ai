@@ -1,0 +1,10 @@
+# Dev-only tooling. NOT needed to run the curriculum — `pip install -r requirements.txt` is
+# still the whole setup story for a learner (see README "Prerequisites"). Install this file
+# on top of it only if you are editing notebooks and want the same output hygiene CI enforces.
+#
+#   pip install -r requirements.txt -r requirements-dev.txt
+
+# Strips cell outputs. Graded cells must ship with empty outputs so a learner never sees the
+# answer's printed result before writing it; tools/check_outputs.py enforces that in CI, and
+# nbstripout is how you fix a cell it flags. See CONTRIBUTING.md.
+nbstripout==0.8.1
