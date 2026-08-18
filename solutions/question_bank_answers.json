@@ -1,771 +1,771 @@
 {
- "loop-001": {
-  "key_concepts": [
-   "max-iteration guard",
-   "duplicate-observation detection",
-   "semantic cycle detection"
-  ],
-  "answer": "Detection needs at least two independent layers: a hard max-iteration cap as the absolute backstop (cheap, always catches a truly runaway agent), and a smarter check for the common case where the agent is technically varying its output slightly but making no real progress — exact-match duplicate-observation detection catches literal repeats, but a semantic similarity check (e.g. comparing successive Thought/Action pairs with something like difflib's SequenceMatcher, or an embedding-similarity threshold) catches the more common case where wording shifts slightly each turn without the underlying state actually changing. Stopping means failing loudly with the partial trace, not silently truncating."
- },
- "loop-002": {
-  "key_concepts": [
-   "max-iteration guard",
-   "hard iteration cap"
-  ],
-  "answer": "A hard max-iteration cap, full stop, before anything cleverer. It's the cheapest possible safeguard, it can never itself have a bug that lets a loop through (an off-by-one aside), and it bounds the worst case in both cost and latency even if every smarter detector has a gap. Add duplicate-observation and semantic-cycle detection on top once the basic cap is in place — they catch loops earlier and more gracefully, but the cap is the thing you can't ship without."
- },
- "loop-003": {
-  "key_concepts": [
-   "max-iteration guard",
-   "cost monitoring",
-   "duplicate-observation detection"
-  ],
-  "answer": "First check: pull the actual trace for that ticket and look at whether the same tool call (or a near-identical one) is repeating. That immediately tells you whether this is a literal loop (same call, same result, agent re-decides to call it again) or a slow-but-legitimate multi-step task. Cheapest fix to ship today: a hard iteration cap (e.g. 15-20 turns) that fails the request loudly instead of letting it run — it won't fix the root cause, but it bounds the cost and latency blast radius immediately while a real fix (duplicate-observation or semantic-cycle detection) gets built properly."
- },
- "loop-004": {
-  "key_concepts": [
-   "loop detection",
-   "cost/latency",
-   "max-iteration guard"
-  ],
-  "answer": "This is very likely an unbounded agent loop. Walk them through the trace showing the agent repeatedly calling the same tool (or a close variant) without a stopping condition catching it. The fix isn't one thing: a hard iteration cap bounds the worst case immediately, duplicate-observation detection catches literal repeats, and for cases where the wording varies slightly each turn without real progress, a semantic similarity check is what actually catches it. Frame the cost as a symptom of a missing safeguard, not an inherent cost of using agents at all — that distinction matters for whether leadership trusts agents going forward."
- },
- "loop-005": {
-  "key_concepts": [
-   "semantic cycle detection",
-   "duplicate-observation detection",
-   "hash-based vs. semantic guards"
-  ],
-  "answer": "A simple iteration cap is necessary but not sufficient here: it'll eventually stop the waste, but only after burning a lot of calls, and it doesn't distinguish \"legitimately taking many steps\" from \"stuck.\" What actually catches this earlier is duplicate-observation or semantic-cycle detection applied across the *pair* of agents' combined trace, not each agent's own history in isolation — the cycle is between them, so a guard that only looks at one agent's own repeated actions can miss a back-and-forth pattern that never repeats identically from either agent's individual point of view."
- },
- "loop-006": {
-  "key_concepts": [
-   "semantic cycle detection",
-   "limits of hash-based cycle detection"
-  ],
-  "answer": "Exact-match hashing misses semantically-identical-but-differently-worded outputs — an agent re-deriving \"I should check the inventory database\" as slightly different phrasing each turn will hash differently every time even though it's the same decision on repeat. The fix is a semantic similarity check (embedding cosine similarity, or a simpler text-similarity measure like difflib's SequenceMatcher) with a threshold, comparing recent Thought/Action pairs rather than requiring byte-for-byte identity."
- },
- "loop-007": {
-  "key_concepts": [
-   "chatbot vs. workflow vs. agent",
-   "single-step vs. multi-step decision-making"
-  ],
-  "answer": "The test isn't \"does it use an LLM,\" it's \"does it need to make more than one sequential decision based on what just happened.\" A three-bullet-point summary is a single-shot transformation — input in, output out, no intermediate decision that depends on an observation from a prior step. That's a single LLM call, not an agent, regardless of how good the model behind it is. If a follow-up requirement appeared (e.g. \"look up related documents first, then summarize using only relevant ones\") that would introduce a real multi-step decision and change the answer."
- },
- "loop-008": {
-  "key_concepts": [
-   "ReAct",
-   "Thought",
-   "Action",
-   "Observation"
-  ],
-  "answer": "Thought: the model reasons about what to do next, in natural language, before acting. This is what makes the process interpretable and lets the model change course based on new information. Action: the model selects and calls a tool with specific arguments, based on the preceding Thought. Observation: the tool's real result gets fed back into context, becoming the input to the next Thought. The loop repeats until the model decides it has enough information to produce a final answer instead of another action — the interleaving of reasoning and acting (rather than planning everything up front, or acting with no reasoning at all) is the core idea the pattern is named for."
- },
- "loop-009": {
-  "key_concepts": [
-   "when NOT to use an agent",
-   "deterministic vs. probabilistic control flow"
-  ],
-  "answer": "Agree when the actual logic really is a small number of well-understood, stable cases: a decision tree is faster, cheaper, fully deterministic, and has zero LLM-related security surface for exactly that kind of problem, and reaching for an agent there adds cost and unpredictability for no benefit. Push back when the input space is large or fuzzy enough that the \"tree\" would need to keep growing branches to cover new cases as they show up — that's usually the sign the task actually needs judgment under uncertainty rather than a fixed set of rules, which is exactly what an agent is suited for and a decision tree isn't."
- },
- "agents-001": {
-  "key_concepts": [
-   "coordination overhead",
-   "context isolation",
-   "supervisor-worker pattern"
-  ],
-  "answer": "Adding agents is a bad call when the coordination overhead (extra round-trips, a synthesis/summarization step, serialized rather than parallel work) exceeds whatever specialization benefit splitting the task was supposed to buy. Concretely: if the subtasks aren't actually independent (each one needs the others' output before it can start), splitting them across agents just adds latency with no parallelism benefit; and even when they are independent, every agent boundary costs at least one extra context-assembly and synthesis step that a single agent doing the same work end-to-end wouldn't pay. The right question isn't \"could this be multiple agents\" but \"does this specific task have a real reason (genuine parallelism, or a real need for isolated context) that a single agent doesn't already handle.\""
- },
- "agents-002": {
-  "key_concepts": [
-   "coordination overhead",
-   "synthesis cost",
-   "context isolation tradeoffs"
-  ],
-  "answer": "The 3x expectation assumes the subtasks are both independent and equally sized, and that dividing them costs nothing — none of that is free in practice. Real costs: each agent needs its own context assembled (which isn't instant), the orchestrator has to wait for the slowest of the three before it can synthesize a combined result (so total latency is bounded by the slowest branch, not the average), and the synthesis step itself is extra work a single agent doing everything sequentially never had to do. If the three subtasks also have any real dependency between them, some of that \"parallel\" work is actually serialized behind a wait, eating further into the expected speedup."
- },
- "agents-003": {
-  "key_concepts": [
-   "tracing per-hop latency",
-   "supervisor-worker pattern",
-   "unnecessary hops"
-  ],
-  "answer": "Trace each hop's latency individually (Chapter 2's tracing pattern applies directly here) rather than treating \"multi-agent\" as one cost. Specifically check: are all four agents' calls actually running in parallel, or is the orchestrator waiting on each sequentially without realizing it; is there a hop that adds no real value (an agent that just passes data through with no transformation); and how much of the total latency is the synthesis/aggregation step at the end versus the agents' own work. \"Multi-agent is modern\" isn't itself a reason to keep an architecture that's measurably 3x slower. Cut whichever hops the trace shows aren't earning their cost."
- },
- "agents-004": {
-  "key_concepts": [
-   "when NOT to use multi-agent",
-   "architectural judgment",
-   "coordination overhead"
-  ],
-  "answer": "Before committing to the architecture: does this task have genuinely independent subtasks that benefit from parallel execution, or a real need for isolated context (e.g. one agent needs to see untrusted content the others shouldn't)? What's the expected latency/cost overhead of coordination, estimated concretely rather than assumed away? What would the single-agent version's actual limitation have been — is there a specific failure mode multi-agent solves, or is this architecture-first thinking? A retro finding \"not measurably better\" after a full quarter is exactly the outcome that question 0 of a proper design framework (does this need multi-agent at all) is meant to catch before the build starts, not after."
- },
- "agents-005": {
-  "key_concepts": [
-   "context isolation",
-   "leaky subagents",
-   "compressed synthesis vs. leaky return"
-  ],
-  "answer": "Beyond raw token cost, a leaky subagent return pollutes the orchestrator's own context with irrelevant intermediate noise. Every subsequent decision the orchestrator makes has to reason around a bloated, mostly-irrelevant transcript instead of a clean summary of what actually matters. This degrades decision quality (more noise to filter through), increases the chance of the orchestrator getting confused by an intermediate dead-end the subagent already resolved, and defeats the actual point of context isolation, which is that the orchestrator should only ever see a clean, synthesized result, not relive the subagent's entire process."
- },
- "agents-006": {
-  "key_concepts": [
-   "supervisor-worker pattern",
-   "context isolation",
-   "specialization tradeoffs"
-  ],
-  "answer": "Genuine, mutually-independent parallelism (the five tasks don't depend on each other's output and really can run concurrently) or a real isolation need (one tool's output is untrusted/verbose/irrelevant to the others and shouldn't pollute a shared context) — either of those is a real reason. Simply \"it has five tools\" isn't, by itself, a reason: a single agent with five tools and good judgment about which to call when is often simpler, cheaper, and just as effective, and multi-agent should be justified by a concrete benefit the single-agent version can't get, not by tool count alone."
- },
- "agents-007": {
-  "key_concepts": [
-   "ReAct vs. plan-and-execute",
-   "fixed workflow vs. dynamic reasoning"
-  ],
-  "answer": "Plan-and-execute, not ReAct — if the steps and their order are fixed and known in advance, that's closer to a deterministic workflow than something that needs step-by-step reasoning about what to do next based on what just happened. ReAct's value is adapting each step based on the previous observation; if there's no real adaptation happening (the five steps run in that order every time regardless of what any step returns), a fixed pipeline is simpler, more predictable, and easier to debug than paying for an LLM's reasoning at each step when the reasoning never actually changes the outcome."
- },
- "agents-008": {
-  "key_concepts": [
-   "semantic cycle detection",
-   "hash-based cycle detection limits",
-   "multi-agent loops"
-  ],
-  "answer": "A max-iteration guard should have caught the runaway cost eventually, but the real gap is earlier: exact-match (hash-based) duplicate-observation detection likely didn't catch this because each round's handoff message probably wasn't byte-for-byte identical, just different phrasing and different framing of the same underlying stuck state. What actually catches this is semantic cycle detection, comparing the *meaning* of successive handoffs (e.g. via embedding similarity or a text-similarity measure) rather than requiring literal repetition, since two agents stuck in a real cycle rarely phrase every round identically."
- },
- "agents-009": {
-  "key_concepts": [
-   "context isolation",
-   "subagent patterns",
-   "compressed synthesis"
-  ],
-  "answer": "Mechanically, context isolation means the orchestrator's own context window never contains the subagent's full internal working state — its intermediate tool calls, dead ends, and reasoning steps stay inside the subagent's own separate context and never get appended to the orchestrator's history. What crosses the boundary back to the orchestrator is only the subagent's final, synthesized result. This protects the orchestrator from context bloat (the subagent's noise never accumulates in the main thread), and it means a messy or exploratory subagent process doesn't degrade the orchestrator's own reasoning quality on later steps."
- },
- "rag-001": {
-  "key_concepts": [
-   "faithfulness",
-   "recall@k",
-   "groundedness"
-  ],
-  "answer": "Faithfulness (does the generated answer's claims actually appear in / follow from the retrieved documents) tells you whether generation is the problem; recall@k (did the retriever surface the right document(s) at all) tells you whether retrieval is the problem. Check them in that order: first confirm the right document was actually retrieved (recall@k on that query) — if it wasn't, the fix is retrieval-side (chunking, embeddings, query reformulation); if it was retrieved but the answer still doesn't reflect it, faithfulness is low and the fix is generation-side (a better prompt enforcing groundedness, or a stricter generation strategy)."
- },
- "rag-002": {
-  "key_concepts": [
-   "faithfulness",
-   "groundedness",
-   "retrieval vs. generation failure"
-  ],
-  "answer": "Check whether the cited document was actually retrieved and made it into the model's context in the first place. If it wasn't (or a wrong document was retrieved instead), it's a retrieval bug. If the right document genuinely was in context and the model still stated something not supported by it, that's a generation/faithfulness bug: the model ignored or misread grounded content it had access to. This is exactly why logging what was actually retrieved per request matters: without it, you're guessing which stage failed instead of checking."
- },
- "rag-003": {
-  "key_concepts": [
-   "recall@k measures retrieval only",
-   "faithfulness scoring",
-   "generation-stage failure"
-  ],
-  "answer": "recall@5 only measures whether the relevant document showed up in the top 5 results — it says nothing about what the model actually did with that document once it had it. A system can have excellent recall and still generate answers that misstate, over-extend, or ignore the retrieved content entirely; that's a faithfulness problem, a completely separate failure mode from retrieval that recall@k was never designed to catch. The fix is adding a faithfulness metric (checking generated claims against retrieved text) alongside recall, not replacing it."
- },
- "rag-004": {
-  "key_concepts": [
-   "precision@k",
-   "mean reciprocal rank",
-   "rank-sensitive metrics"
-  ],
-  "answer": "Precision@1 only checks the very top result, so it would score this as a miss (the best document is at rank 3, not rank 1) even though the system did eventually surface the right document within a reasonable window. MRR rewards it partially (1/3 instead of 0) because it accounts for *where* in the ranking the first relevant result appears, not just whether it's exactly first. Prefer MRR when a user (or a downstream generation step) is likely to consider a few top results, not just the single first one; prefer precision@1 when only the very top result actually matters, e.g. a UI that only ever shows one answer."
- },
- "rag-005": {
-  "key_concepts": [
-   "chunking strategy",
-   "corpus quality",
-   "near-duplicate documents",
-   "confusable content"
-  ],
-  "answer": "A bigger embedding model won't help if the actual bottleneck is chunking (documents split at bad boundaries, losing context needed to match a query correctly), corpus quality (near-duplicate or confusable documents that even a great embedding model can't reliably distinguish, since the ambiguity is in the content, not the encoding), or the underlying documents themselves being sparse/outdated/wrong. Before assuming embeddings are the bottleneck, check whether the corpus has near-duplicate documents that would confuse any retriever, and whether chunk boundaries are cutting relevant content into pieces that individually don't match the query well."
- },
- "rag-006": {
-  "key_concepts": [
-   "faithfulness scoring",
-   "retrieved-context logging",
-   "debuggability"
-  ],
-  "answer": "At minimum: the exact query, the full list of retrieved documents/chunks with their ranks and similarity scores, which chunks were actually included in the final prompt (post-truncation, if applicable), and the generated answer's text. With that, you can independently check recall (was the right doc retrieved at all) and faithfulness (does the answer's content actually match what was retrieved) after the fact — without logging what was retrieved specifically, a wrong answer is undebuggable, since you can't tell whether retrieval or generation is at fault after the request is long gone."
- },
- "hallu-001": {
-  "key_concepts": [
-   "hallucination",
-   "RAG reduces but doesn't eliminate hallucination",
-   "faithfulness"
-  ],
-  "answer": "RAG reduces hallucination by giving the model real source material to ground its answer in, but it doesn't eliminate it: the model can still ignore, misread, or over-extend what it was given, the same way a person given the right reference material can still misquote it. Retrieval fixes \"the model doesn't know this\" but not \"the model sometimes states things confidently that aren't actually supported by what it was shown.\" Those are two separate failure modes, and RAG only addresses the first one directly."
- },
- "hallu-002": {
-  "key_concepts": [
-   "RAG reduces but doesn't eliminate hallucination",
-   "faithfulness",
-   "generation-stage failure"
-  ],
-  "answer": "Acknowledge the premise is half right (RAG genuinely does reduce hallucination, by giving the model real material to draw from instead of relying purely on what it memorized during training), but correct the \"fixes\" framing directly: it lowers the *rate*, it doesn't guarantee zero, because the model can still misstate or over-extend what it was given even when the right source material is right there in front of it. Pair that with something concrete: what faithfulness monitoring is already in place to catch this class of error before it reaches a user, so the correction comes with a real answer, not just a caveat."
- },
- "hallu-003": {
-  "key_concepts": [
-   "hallucination",
-   "next-token prediction",
-   "no built-in truth-checking"
-  ],
-  "answer": "A language model is trained to predict plausible next words based on patterns in its training data, not to check whether a specific claim is factually true — so it can produce a confident, fluent, well-formed sentence that happens to be false, because \"sounds right\" and \"is right\" aren't the same thing the model is optimizing for. There's no built-in fact-checker running alongside it; anything that looks like fact-checking has to be added on top (like grounding it in retrieved real documents), not assumed to already be there."
- },
- "hallu-004": {
-  "key_concepts": [
-   "hallucination has real business/legal consequences",
-   "faithfulness checking before serving an answer",
-   "you own what your chatbot says"
-  ],
-  "answer": "The real production fix here is a faithfulness check between what the chatbot's source material actually says and what it tells the customer, before the response is served. If the airline's actual policy said no retroactive bereavement-fare applications, a faithfulness check comparing the chatbot's claim against the real policy document should have caught the contradiction before it reached the customer. On accountability: the tribunal's actual finding was that the airline was responsible for everything on its own website, chatbot included, and that's the right frame for leadership too. A chatbot's output is the company's output, not some separate, disclaimable voice, so the safeguards need to be treated with the same seriousness as anything else customer-facing."
- },
- "hallu-005": {
-  "key_concepts": [
-   "hallucination can fabricate plausible-looking specifics",
-   "always verify against primary sources",
-   "high-stakes output needs a human-verification gate"
-  ],
-  "answer": "It demonstrates that hallucination isn't just \"the model gets small facts wrong\": it can fabricate entire, internally-consistent, plausible-looking specifics (case names, citations, docket numbers) that have zero basis in reality, confidently enough that trained professionals didn't catch it before submitting it to a real court. The general lesson: for any AI-assisted workflow where the output has real consequences, a human verification step against primary sources isn't optional polish, it's the actual safeguard. The model's fluency and confidence are not evidence of correctness, and treating them as if they were is exactly what went wrong here."
- },
- "hallu-006": {
-  "key_concepts": [
-   "hallucination is not fully eliminable",
-   "honest communication about model limitations",
-   "faithfulness as a mitigation, not a guarantee"
-  ],
-  "answer": "Push back specifically on the word \"never\": it's not just imprecise, it's a claim you can't actually back up and that will get disproven the first time a user hits an edge case, which is worse for trust than an honest caveat would have been. Suggest something accurate instead: describe what grounding/faithfulness work is actually in place (e.g. \"answers are checked against our official documentation before being shown\") without promising zero errors. That's both more honest and, done well, still reads as a strong, confidence-building claim rather than a hedge."
- },
- "evalgap-001": {
-  "key_concepts": [
-   "offline vs. online metrics",
-   "proxy metric divergence",
-   "user satisfaction signals"
-  ],
-  "answer": "Online signals that reflect what users actually do, not what a benchmark predicts they'd think: task completion / resolution rate (did the user's underlying need actually get met), follow-up or clarification rate (a spike suggests answers aren't landing even if they score well offline), explicit feedback (thumbs up/down, complaint volume), and retention/re-engagement for products where that's meaningful. The gap between an offline score and real satisfaction usually means the offline metric is measuring something correlated with quality but not identical to it — the online signals are closer to the actual goal, even though they're noisier and slower to collect."
- },
- "evalgap-002": {
-  "key_concepts": [
-   "offline metrics can diverge from real user outcomes",
-   "simulated vs. real satisfaction signals"
-  ],
-  "answer": "Whether the offline eval set's questions actually resemble real production traffic — a retriever can win on every offline metric against a benchmark that's grown stale or narrow relative to what users are actually asking now, while still performing worse on the traffic that matters. Also worth checking: whether the \"win\" is concentrated in cases that are already easy (inflating the aggregate score without moving the cases that were actually failing), and whether the change affects latency or cost in a way none of the correctness metrics would capture at all."
- },
- "evalgap-003": {
-  "key_concepts": [
-   "benchmark overfitting",
-   "distribution mismatch between eval set and real traffic",
-   "online monitoring"
-  ],
-  "answer": "Hypothesis: the internal benchmark's question distribution doesn't match what real users are actually asking. A benchmark can be static and narrow while real traffic keeps shifting, so a model can improve against the fixed benchmark while getting relatively worse on the traffic that's actually grown or changed. To test it: pull a sample of the real tickets driving the complaint, check whether those specific query patterns are represented in the benchmark at all, and if not, that's strong evidence the benchmark's coverage (not the model) is the actual problem."
- },
- "evalgap-004": {
-  "key_concepts": [
-   "eval set staleness",
-   "distribution drift",
-   "offline benchmark limitations"
-  ],
-  "answer": "A static eval set stops reflecting what users are actually asking as real usage patterns shift over time — new use cases, new phrasing, new edge cases that emerged after the set was written simply aren't represented, so a model can keep \"passing\" the same 50 questions while quietly regressing on everything that's changed since. Gating releases on a stale set gives false confidence: a clean pass doesn't mean the system is good on real current traffic, only that it's good on last year's traffic."
- },
- "evalgap-005": {
-  "key_concepts": [
-   "offline metrics are proxies, not the real goal",
-   "real user behavior as ground truth"
-  ],
-  "answer": "Offline metrics are proxies for what actually matters — a system can score well on precision, recall, and faithfulness against a fixed benchmark while still failing real users in ways the benchmark's specific questions never happened to probe. Online metrics measure the real thing (did an actual user's actual need get met) rather than a stand-in for it; they're noisier and slower, which is exactly why offline metrics stay useful for fast iteration, but neither one alone tells the whole story, which is the actual reason to track both."
- },
- "evalgap-006": {
-  "key_concepts": [
-   "latency as a real-world quality factor",
-   "online metrics beyond correctness",
-   "offline metrics don't capture everything"
-  ],
-  "answer": "Latency is a real quality factor users experience directly, even though it doesn't show up in precision/recall/faithfulness at all. A technically-tied retrieval strategy that's noticeably slower is very plausibly the worse choice once you account for it, since users experience wait time as part of the answer's quality whether or not any offline metric captures that. Confirm it online with something like task abandonment rate or time-to-completion for the slower version in an A/B test: if users are bailing out or getting frustrated before the (equally correct) answer even arrives, that's the online signal validating what the offline metrics alone couldn't tell you."
- },
- "reliability-001": {
-  "key_concepts": [
-   "context freshness",
-   "cache invalidation",
-   "staleness logging"
-  ],
-  "answer": "Start with the logs, not the code. If `context_age_seconds` (or an equivalent) is logged per response, check it for the affected requests first: a large value with the response served from cache points at a caching/invalidation bug; a small value (a fresh, live fetch) with still-wrong content points upstream, at the ingestion/indexing pipeline not having picked up the change at all. Without that field logged in the first place, you're debugging blind, and the first real fix, if it's missing, is adding it before anything else."
- },
- "reliability-002": {
-  "key_concepts": [
-   "cache invalidation on write",
-   "context freshness",
-   "stale index"
-  ],
-  "answer": "First hypothesis: the cache wasn't invalidated when the policy document was updated — either the invalidation trigger was never wired up for that document type, or it fired but the invalidation logic itself has a bug. Confirm by checking whether an invalidation event was even logged for that document's update three weeks ago; if there's no event at all, it's a missing trigger; if there is one, the invalidation logic itself needs debugging separately."
- },
- "reliability-003": {
-  "key_concepts": [
-   "context age logging",
-   "cache vs. live fetch",
-   "context freshness"
-  ],
-  "answer": "Check whether the response came from a cache or a live fetch, and how old the cached entry is: if `context_age_seconds` (or equivalent) isn't logged, that's the first gap to fix, since without it you can't distinguish \"stale cache\" from \"the indexing pipeline hasn't caught up yet,\" which are different bugs with different owners. A quick manual check in the meantime: query the same thing right after forcing a fresh fetch. If it's now correct, it was caching; if it's still wrong, the problem is upstream of the cache entirely."
- },
- "reliability-004": {
-  "key_concepts": [
-   "context age logging as an observable signal",
-   "proactive vs. reactive detection"
-  ],
-  "answer": "Log context age (time since the underlying content was last confirmed fresh) on every response, not just the ones a user happens to complain about, and alert on it crossing a threshold — that turns staleness from something only discoverable via a complaint into something observable continuously, the same way latency or error rate already is. Without that signal, staleness bugs are invisible by default; a single user complaint is the tip of an iceberg you otherwise have no way to see the rest of."
- },
- "reliability-005": {
-  "key_concepts": [
-   "TTL vs. invalidate-on-write",
-   "cache invalidation",
-   "shrinking vs. closing the staleness window"
-  ],
-  "answer": "It shrinks the window, it doesn't close it: a shorter TTL just means the maximum possible staleness drops from an hour to five minutes; it's still possible (and still a bug) for a request to land in that five-minute gap and get stale content. The real fix is cache invalidation on write: the moment the underlying content changes, the cache entry for it gets invalidated immediately, so there's no staleness window at all rather than a smaller one. TTL alone is a mitigation, invalidate-on-write is the actual fix."
- },
- "reliability-006": {
-  "key_concepts": [
-   "staleness only manifests after a write event",
-   "hard to reproduce without simulating time/updates"
-  ],
-  "answer": "Because the bug only manifests at the intersection of two events that don't naturally happen together in a typical test run: a write to the underlying data, and a read that should reflect it, with enough of a gap (real or simulated) between them for a cache/index to plausibly be out of sync. A test that writes and immediately reads back rarely exercises the actual staleness window a real production timeline creates — reproducing it usually requires either deliberately simulating time passing or specifically testing the invalidation path itself, not just normal read/write behavior."
- },
- "reliability-007": {
-  "key_concepts": [
-   "circuit breaker",
-   "retry with backoff",
-   "known-down vs. transient failure"
-  ],
-  "answer": "Circuit breaker, not retry — the outage isn't transient noise, it's a known, bounded window where the dependency is definitely down, so retrying just wastes time (every call still fails through its full backoff schedule) and adds load to a service that's already down for maintenance, for zero benefit. A circuit breaker opens after the first few failures and stops trying until the window passes, which is both faster to fail and kinder to the maintaining service than a retry loop that can't succeed no matter how many times it tries."
- },
- "reliability-008": {
-  "key_concepts": [
-   "thundering herd",
-   "jitter",
-   "exponential backoff"
-  ],
-  "answer": "This is very likely retries without jitter causing a thundering herd: if every client retries on the same fixed schedule (e.g. everyone retries exactly 1 second after a failure), all of them hit the service again at the same moment, and if that moment happens to land during one of the service's bad minutes, the retry burst itself can make the bad minute worse or longer. The fix is adding randomized jitter to each client's backoff schedule, so retries spread out over time instead of synchronizing. Exponential backoff alone reduces the rate of retries but doesn't prevent this synchronization problem on its own."
- },
- "reliability-009": {
-  "key_concepts": [
-   "exponential backoff",
-   "jitter",
-   "rate-limit handling"
-  ],
-  "answer": "On a 429: don't retry immediately — back off, with the delay increasing on each subsequent failure (exponential backoff) so repeated rate-limiting doesn't just retry into the same wall faster; add randomized jitter to that delay so many concurrent clients hitting the same limit don't all retry in lockstep and cause a synchronized second wave; respect a `Retry-After` header if the API provides one, since that's the provider telling you exactly how long to wait rather than you guessing; and cap the total number of retry attempts so a persistently rate-limited request fails cleanly rather than retrying forever."
- },
- "cost-001": {
-  "key_concepts": [
-   "duplicate-call bug",
-   "unbounded context growth",
-   "model routing",
-   "prompt caching"
-  ],
-  "answer": "Before adding capacity, check for the cheap wins that don't cost anything to try: a duplicate-call bug (a non-idempotent retry path silently doubling token volume on some requests — diagnosable from a token-volume step change in the request log with no matching change in query complexity); unbounded context growth in any conversational flows (input tokens creeping up turn over turn with no truncation policy); and whether model routing is actually in place (simple requests going to an expensive model by default instead of a cheaper one that would do just as well). Only after ruling those out does prompt caching or genuine capacity/GPU scaling become the right next lever."
- },
- "cost-002": {
-  "key_concepts": [
-   "traffic volume vs. per-request cost",
-   "request log analysis",
-   "duplicate-call bug"
-  ],
-  "answer": "Since nothing was deployed, the cause is either a change in traffic *pattern* (not volume, e.g. more retries, more duplicate calls, longer conversations) or something upstream that changed without a corresponding deploy on your side (a client-side bug generating extra calls, a scheduled job that started running more often). Pull the request log and compare this month's average tokens-per-request and calls-per-user-session against last month's: if either climbed with no deploy to explain it, that narrows the search to a behavioral change in usage patterns rather than a code change."
- },
- "cost-003": {
-  "key_concepts": [
-   "request volume growth vs. per-request cost",
-   "aggregate vs. per-request metrics"
-  ],
-  "answer": "A normal per-request average can hide a real problem if the *number* of requests went up — the bill is total volume × average cost, and \"average cost per request looks fine\" says nothing about whether the request count itself quietly grew (more retries, more duplicate calls, more sessions) or whether a small subset of requests are wildly more expensive than the average, pulling the total up without moving the mean much. Check total request count and the cost distribution (not just the average) before ruling out a per-request explanation."
- },
- "cost-004": {
-  "key_concepts": [
-   "model routing by task complexity",
-   "quality regression risk",
-   "not a blanket downgrade"
-  ],
-  "answer": "A blanket switch to the cheapest model risks a real quality regression on tasks that actually need the stronger model's capability — multi-step reasoning, tool-heavy tasks, or anything where a wrong answer is costly, could start failing silently in ways that don't show up until users notice. The better lever is model *routing*: send simple, well-understood requests to the cheap tier and keep the strong tier for tasks that genuinely need it, rather than downgrading everything uniformly and hoping nothing that mattered was affected."
- },
- "cost-005": {
-  "key_concepts": [
-   "unbounded context growth",
-   "context window policy",
-   "conversation truncation/summarization"
-  ],
-  "answer": "Likely root cause: no context window policy. Every turn of the conversation gets appended to the prompt with nothing ever truncated or summarized, so input tokens (and cost) grow roughly linearly with conversation length. The fix is a bounded context policy: a sliding window that keeps only the most recent N turns, periodic summarization of older turns, or both, capping how much history gets re-sent on every call instead of letting it grow without bound."
- },
- "cost-006": {
-  "key_concepts": [
-   "duplicate-call bug",
-   "idempotency",
-   "token-volume step change diagnostic signature"
-  ],
-  "answer": "Look for a token-volume step change on a specific slice of requests with no corresponding change in what users were actually asking — e.g. a run of requests whose input/output tokens are roughly double their neighbors' for no query-complexity reason. That signature (a jump in volume with no complexity explanation) is the diagnostic tell for a duplicate-call bug; confirm by checking whether those specific request IDs show two near-identical calls close together in time, which a properly logged idempotency key would make immediately visible."
- },
- "latency-001": {
-  "key_concepts": [
-   "latency decomposition",
-   "queueing vs. inference vs. generation",
-   "queue depth"
-  ],
-  "answer": "Check the latency decomposition first (queueing, network, inference [prefill], and generation [decode]) before touching anything else, since \"latency jumped\" could mean any of the four and each has a completely different fix. Specifically: pull queue_depth/queue_time_ms for the affected window; if that's what spiked while token counts and per-token processing rates look normal, it's a capacity/queueing problem, not a model problem, and the fix is different (backpressure or added capacity) than if inference or generation time itself had grown."
- },
- "latency-002": {
-  "key_concepts": [
-   "queueing vs. inference bottleneck",
-   "latency decomposition",
-   "capacity vs. model-speed problem"
-  ],
-  "answer": "It's right when the bottleneck is genuinely queueing: too many concurrent requests for available capacity, confirmed by queue_depth or queue_time_ms actually spiking while per-token processing rates look normal; more GPUs adds queueing capacity and directly helps there. It's a waste when the slowdown is in inference or generation time itself (a slower model, GPU contention from something else, a serving-stack regression). More GPUs doesn't make a genuinely slower per-token rate faster, so throwing capacity at a non-capacity problem burns money without fixing the actual latency source."
- },
- "latency-003": {
-  "key_concepts": [
-   "queueing",
-   "latency decomposition ruling out inference/generation"
-  ],
-  "answer": "If token counts per request are normal, that rules out both inference (prefill scales with input tokens) and generation (decode scales with output tokens) as the cause of a p99 spike this large — normal tokens with a 6x latency jump points squarely at queueing: too many concurrent requests competing for capacity, with each individual request's *processing* still normal-speed once it actually starts, it's just waiting longer to start."
- },
- "latency-004": {
-  "key_concepts": [
-   "queueing",
-   "network",
-   "inference (prefill)",
-   "generation (decode)"
-  ],
-  "answer": "Queueing (waiting for a worker/GPU to free up), network (time on the wire, not on any GPU), inference/prefill (processing the input prompt), and generation/decode (producing the output, token by token). Model choice affects inference and generation directly (a faster or smaller model processes/generates faster per token) but has no direct effect on queueing or network time — those are capacity and infrastructure problems, not model problems, which is exactly why conflating \"latency is high\" with \"the model is slow\" leads to the wrong fix."
- },
- "latency-005": {
-  "key_concepts": [
-   "queueing spike from concurrent load",
-   "backpressure",
-   "blast radius of shared capacity"
-  ],
-  "answer": "Expect a real queueing-driven latency spike for other traffic sharing the same capacity — the batch job adds a large burst of concurrent load competing for the same limited GPU/worker capacity as normal user-facing requests, so queue depth rises and everything behind it in line waits longer, even though nothing about any individual user-facing request changed. This is the shared-capacity blast-radius problem: one workload's burst degrades every other workload sharing the same pool, which is exactly why batch jobs are normally scheduled off-peak and why backpressure/load-shedding matters for protecting latency-sensitive traffic from bursty background work."
- },
- "latency-006": {
-  "key_concepts": [
-   "queue_depth / queue_time_ms as a diagnostic signal",
-   "stage-level latency logging"
-  ],
-  "answer": "queue_depth (or queue_time_ms) logged per request, checked for the affected window — if it's elevated, requests are genuinely waiting longer to start (a queueing/capacity problem); if it's normal but inference_time_ms or generation_time_ms is elevated instead, the model itself is genuinely processing slower. This one field, logged per stage rather than only as an aggregate total, is what turns \"latency is bad\" into an actual diagnosis instead of a guess."
- },
- "security-001": {
-  "key_concepts": [
-   "instruction/data separation",
-   "output filtering",
-   "least privilege",
-   "defense in depth"
-  ],
-  "answer": "No single safeguard, several layered together: instruction/data separation so untrusted content the agent reads is treated as data, never as an instruction to follow; least-privilege tool scoping so even a successfully-tricked agent can't reach the confidential data through an overly broad tool; and output filtering as a last-resort net that catches a leak if the earlier layers had a gap. The point of naming all three, not just one, is that each catches a different failure — instruction/data separation reduces how often the trick works at all, tool scoping bounds what a successful trick can reach, and output filtering catches what slips through both."
- },
- "security-002": {
-  "key_concepts": [
-   "direct prompt injection",
-   "tool/action scoping",
-   "output constraints",
-   "no binding commitments from an unguarded LLM"
-  ],
-  "answer": "Tool/action scoping: the chatbot should never have had a tool or output pathway capable of producing a \"legally binding\" commitment at all — vehicle pricing and sale terms shouldn't be something a customer-facing LLM can state as fact or commitment, full stop, regardless of what it was tricked into saying. \"Be more careful with prompting\" doesn't fix this, because prompt-level instructions aren't a hard guarantee; the actual fix is removing the capability to make binding-sounding statements from what the model can output in the first place, the same least-privilege principle applied to output shape, not just tool calls."
- },
- "security-003": {
-  "key_concepts": [
-   "policy check independent of decision path",
-   "defense in depth",
-   "least privilege"
-  ],
-  "answer": "That the refund amount doesn't exceed the order's actual, ground-truth total — checked independently of however the agent decided to make the call, whether that decision came from a legitimate customer request or an injected directive buried in ticket content. This is the layer that catches the attack even if instruction/data separation has a gap, because it validates the *result* against reality rather than trusting the reasoning that produced it."
- },
- "security-004": {
-  "key_concepts": [
-   "mixed instruction/data channel",
-   "no structural separation in a prompt",
-   "output filtering as a backstop"
-  ],
-  "answer": "Because the instruction and the thing it's trying to protect live in the same channel, with nothing structurally separating \"things the model should treat as authoritative\" from \"things it should treat as content to discuss\": a strongly-worded system prompt instruction is competing with a cleverly-worded user request on equal footing, not overriding it from some privileged position the architecture doesn't actually provide. Output filtering (scanning responses for secret-shaped patterns before they're returned) is the backstop for exactly this gap. It's what catches a leak that got past the prompt-level instruction, not a replacement for the instruction being there at all."
- },
- "security-005": {
-  "key_concepts": [
-   "defense in depth",
-   "no single mitigation is sufficient",
-   "instruction-following is not a hard guarantee"
-  ],
-  "answer": "Acknowledge that a good system prompt is a real, useful layer: it's just not sufficient by itself, because there's no architectural guarantee that instructions in a prompt will always be followed, especially against a cleverly-crafted adversarial input specifically designed to work around exactly that kind of instruction. Frame it the way any other security-critical system is framed: nobody relies on a single lock on the front door for a bank vault either. Least-privilege tool scoping and output filtering exist specifically to catch what a prompt-level instruction alone can't guarantee, and having all of them together is what \"solved\" actually looks like here, not any one of them."
- },
- "security-006": {
-  "key_concepts": [
-   "least privilege",
-   "blast radius",
-   "tool scoping"
-  ],
-  "answer": "It doesn't make the injection itself less likely to succeed, but it dramatically changes what a successful injection can actually do — a narrow, task-specific tool (e.g. `issue_refund(order_id, amount)`) gives an attacker at most that one capability even if they fully control the agent's decision, while a general `run_db_command(sql)` tool gives them the same reach as direct database access, including reads/writes the agent was never meant to need. This is the least-privilege argument made concrete: scoping tools narrowly bounds the blast radius of a successful attack, even when the attack itself can't be fully prevented."
- },
- "security-007": {
-  "key_concepts": [
-   "direct vs. indirect prompt injection",
-   "untrusted retrieved content"
-  ],
-  "answer": "Direct injection is a user typing a malicious instruction straight into their own conversation with the agent: the untrusted content and \"the conversation\" are the same thing. Indirect injection is the malicious instruction arriving inside content the agent retrieves or processes on someone's behalf (a document, a ticket, a search result), content nobody flagged as untrusted because it wasn't typed by a user at all. It matters more once an agent has tools because indirect injection is what turns \"the agent said something wrong\" into \"the agent did something wrong.\" An agent reading untrusted content and then acting on a hidden instruction inside it is a fundamentally different risk than a chatbot that can only talk back."
- },
- "security-008": {
-  "key_concepts": [
-   "output filtering as a last-resort net, not the only layer",
-   "secrets shouldn't be reachable in context at all"
-  ],
-  "answer": "Output filtering only catches leaks that are shaped predictably enough to pattern-match (a specific secret format, a known string). It does nothing to stop a differently-worded or unanticipated leak, and it does nothing at all to prevent the underlying problem, which is that the secret was reachable by the model in the first place. The more durable fix is making sure secrets never enter the model's context at all (kept in code/config the agent's tools can use without the model itself ever seeing the raw value). Output filtering is a useful last-resort net for whatever that first layer misses, not a substitute for it."
- },
- "security-009": {
-  "key_concepts": [
-   "secrets don't belong in a prompt at all",
-   "code/config boundary vs. model context",
-   "instruction is not a guarantee"
-  ],
-  "answer": "Yes, it's still a problem: an instruction telling the model \"never reveal this\" lives in the exact same channel as the secret it's trying to protect, competing with whatever a user crafts to try to extract it, with no structural guarantee the instruction wins. The actual fix is keeping the key out of the model's context entirely: it belongs in code/config that the agent's tools can use directly when calling a real API, never in text the model reasons over. That way there's nothing for a successful injection to even extract, regardless of how the instruction not to reveal it is worded."
- },
- "tools-001": {
-  "key_concepts": [
-   "failure taxonomy",
-   "malformed vs. version-mismatch",
-   "schema validation"
-  ],
-  "answer": "Depends entirely on which of the four failure types this actually is, which is exactly why \"invalid data\" needs to be classified before deciding: if it's a one-off malformed response (a field with the wrong type, likely a transient upstream glitch), retry against a fresh call or an alternate source; if it's systematically missing/renamed fields (a version mismatch, the tool's schema itself changed shape), retrying the same call won't help, that needs escalation to a developer to update the integration; if the data is well-formed but doesn't match what was actually asked for (semantically wrong), neither retry nor switch is safe without a way to verify correctness: that's the case for asking the user or applying an independent verification check."
- },
- "tools-002": {
-  "key_concepts": [
-   "semantically wrong failure type",
-   "schema validates shape not truth"
-  ],
-  "answer": "Semantically wrong: the response is schema-valid (every field has the right type, nothing's missing) but the content doesn't answer what was actually asked. Schema validation checks shape, not truth: it can confirm a field called \"name\" contains a string, but it has no way to know whether that string is the *correct* entity's name versus some other entity's name entirely. Catching that requires a separate check comparing the response's content against what was actually requested, not a stricter schema."
- },
- "tools-003": {
-  "key_concepts": [
-   "version mismatch",
-   "continuous schema validation",
-   "ask-user/developer escalation"
-  ],
-  "answer": "Continuous schema validation on every response, not just at integration build time — if the tool's expected schema (e.g. via a Pydantic model or equivalent) had been validated against every live response rather than assumed correct once and never rechecked, the renamed field would have shown up immediately as a \"missing required field\" validation error the first time it happened, instead of silently breaking half the integration until a human noticed. That validation failure is also exactly the kind of signal that should escalate to a developer automatically (this chapter's \"ask-user\"/escalate response for version-mismatch failures), rather than only surfacing via a downstream user complaint."
- },
- "tools-004": {
-  "key_concepts": [
-   "retry doesn't fix malformed/semantic/version-mismatch failures",
-   "failure taxonomy"
-  ],
-  "answer": "Take the version-mismatch case specifically: if a third-party API renames a field, every retry of the same call hits the exact same schema validation failure every time, since the problem isn't transient at all. It's a permanent shape change that retrying can't route around. Worse, \"retry three times then give up silently\" burns three wasted round-trips and then produces silence instead of surfacing the actual signal (a developer needs to update the integration). A universal retry policy doesn't just fail to help here, it actively hides the failure from whoever could have fixed it."
- },
- "tools-005": {
-  "key_concepts": [
-   "transient failure",
-   "retry with backoff"
-  ],
-  "answer": "Transient — a one-off timeout followed immediately by success on an identical retry is the textbook signature of a transient failure (a momentary network blip or rate limit, not a real problem with the request or the tool itself). The appropriate response is exactly what happened: retry, ideally with backoff so a persistent version of the same problem doesn't just hammer the tool repeatedly at the same rate."
- },
- "tools-006": {
-  "key_concepts": [
-   "missing field vs. wrong-type field",
-   "version mismatch signature"
-  ],
-  "answer": "A field simply being absent (not present with a wrong type, just missing from the response entirely) is the signature of version mismatch, not malformed data — it suggests the upstream schema itself changed shape (a rename, a restructure), not that this one response happened to be corrupted. The general distinction: a wrong-*type* error on a field that's present points at malformed/corrupted data for that specific response; a *missing* field, especially if it's consistently missing across many calls rather than one-off, points at the schema itself having changed underneath the integration."
- },
- "tools-007": {
-  "key_concepts": [
-   "standardized client-server protocol",
-   "M×N vs. M+N integration problem"
-  ],
-  "answer": "The difference isn't the wire format, it's standardization of the *interface itself*: MCP defines a common way for any compliant client to discover and call any compliant server's tools without either side needing custom, bespoke glue code for that specific pairing, the same way HTTP lets any browser talk to any web server. That turns an M×N integration problem (M agent frameworks, each needing custom code for N tools) into roughly M+N (each side implements the protocol once). A REST API alone doesn't give you that, since every REST API still typically needs its own bespoke client integration written against its specific shape."
- },
- "tools-008": {
-  "key_concepts": [
-   "schema validation as an enforced contract",
-   "Pydantic-style validation"
-  ],
-  "answer": "Because \"documentation\" can drift from reality silently — a comment describing what a tool expects doesn't stop a caller from passing something that violates it, and doesn't stop the tool from returning something that violates its own documented shape either. An enforced contract (real runtime validation against a schema, e.g. via Pydantic) fails loudly and immediately the moment either side violates it, which is exactly the difference between catching a version-mismatch or malformed-data bug the moment it happens versus only discovering it once it's caused a downstream, harder-to-trace problem."
- },
- "tools-009": {
-  "key_concepts": [
-   "generic error handling masks distinct failure types",
-   "failure taxonomy needs distinct responses"
-  ],
-  "answer": "Because it treats every failure identically when they need genuinely different responses: a transient network blip, a permanently malformed response, data that's valid-but-wrong, and an upstream schema change are four different problems with four different fixes (retry, switch source, verify/ask, escalate to a developer), and collapsing all of them into \"log and move on\" means none of them actually get the right response. Worse, it hides version-mismatch and malformed-data bugs specifically, the ones that need a human to notice and fix something, behind a log line nobody's likely to go read until a user complains."
- },
- "design-001": {
-  "key_concepts": [
-   "failure cost before architecture",
-   "does this need an agent",
-   "success criteria"
-  ],
-  "answer": "First: what does \"simple\" actually mean here, concretely? What's the specific criterion that separates a ticket the agent should resolve automatically from one it shouldn't, since that boundary is the single riskiest design decision in the whole system. Second: what does a wrong automatic resolution cost? Closing a ticket that wasn't actually resolved is very different in severity from, say, issuing an incorrect refund, and that cost should drive how much safeguarding the system needs before anything else is decided. Third: what does success even look like, measurably, so there's a way to tell after launch whether the agent is actually helping or quietly making things worse. Proposing an architecture before these three are pinned down is the premature-jump mistake a system-design framework exists to prevent."
- },
- "design-002": {
-  "key_concepts": [
-   "when NOT to use an agent",
-   "does this need judgment under uncertainty"
-  ],
-  "answer": "What specific judgment call does this feature need to make that the existing deterministic logic can't already express? If the pipeline is reliably working and there's no genuine multi-step decision under uncertainty involved, adding an agent introduces nondeterminism, cost, and a new security surface for no offsetting benefit. If the answer reveals a real new requirement (inputs varied enough that hardcoded rules are becoming unmaintainable, or a step that now needs to weigh several plausible interpretations), that's what would actually justify it, but the question has to be asked and answered first, not skipped in favor of assuming the answer is yes."
- },
- "design-003": {
-  "key_concepts": [
-   "repeatable design framework value",
-   "premature architecture jump"
-  ],
-  "answer": "Push back gently but concretely: a repeatable framework isn't red tape, it's what prevents the specific failure of jumping straight to \"here's my architecture\" before establishing whether the architecture is even solving the right problem. Skipping it doesn't save time, it just moves the cost of skipped questions later, to a point where they're far more expensive to answer (after code is written, or after a launch reveals the framework would have caught something). What's lost concretely: a clear failure-cost assessment, an explicit check on whether the feature needs an agent at all, and a plan for how you'll know it's working, all things that are much cheaper to get right before writing code than after."
- },
- "design-004": {
-  "key_concepts": [
-   "failure cost asymmetry",
-   "security surface",
-   "operational/evaluation burden"
-  ],
-  "answer": "Failure cost and its asymmetry: two designs that tie on latency/cost/accuracy can still differ enormously in what a *wrong* outcome costs and how reversible it is, which is exactly the kind of thing pure performance metrics don't capture. Also worth checking: the security surface (does one design expose more untrusted content to more capable tools than the other), and the ongoing evaluation/operational burden (is one harder to monitor or debug in production). Ties on the metrics you already measured don't mean the designs are actually equivalent, just that you haven't yet measured what's different between them."
- },
- "design-005": {
-  "key_concepts": [
-   "defense in depth justified per-layer",
-   "each layer answers a distinct failure mode"
-  ],
-  "answer": "Name what each layer specifically catches that the others don't, rather than defending \"layering\" as a general virtue: instruction/data separation reduces how often an injected directive gets treated as authoritative in the first place; an independent policy check on the tool call catches a bad amount even if that first layer had a gap; least-privilege tool scoping bounds what damage is possible even if both of those failed. If any two layers were shown to catch the exact same failure with no distinction between them, that would be the actual argument to cut one — the test for \"is this overkill\" is whether each layer earns its place by catching something specific, not whether there are \"a lot\" of layers."
- },
- "design-006": {
-  "key_concepts": [
-   "scenario-specific reasoning vs. checklist recitation",
-   "willingness to cut an unjustified layer"
-  ],
-  "answer": "Ask them to justify cutting one of their proposed layers, or to explain what specific failure a particular technique catches that another one in their answer doesn't — someone reciting best practices will struggle to distinguish between the layers or say confidently which one matters least in this specific scenario, while someone with real judgment will have a concrete, scenario-grounded answer ready for exactly that, because they arrived at each choice for a specific reason rather than because it was on a checklist."
- },
- "design-007": {
-  "key_concepts": [
-   "failure cost drives architecture",
-   "human-in-the-loop for high-stakes irreversible actions"
-  ],
-  "answer": "For the high-stakes, hard-to-reverse case, bias heavily toward a human-in-the-loop gate before the action executes, tighter tool scoping, and more conservative automation thresholds: the cost of a false positive (the agent acting when it shouldn't have) is severe and can't be easily undone, so slowing the system down to add a checkpoint is worth the latency it costs. For the low-stakes, easily-recoverable case (a chat response a user can just ask to be corrected), full autonomy with lighter safeguards is a reasonable trade. The cost of being occasionally wrong is low enough that optimizing for speed and reducing friction matters more than adding a gate that would rarely change the outcome."
- },
- "design-008": {
-  "key_concepts": [
-   "evaluation plan before shipping",
-   "can't safely iterate without a way to measure success"
-  ],
-  "answer": "Without defined success metrics, there's no way to tell after shipping whether the system is actually working, regressing, or just producing output that looks plausible without anyone able to confirm it's good. \"We'll figure it out later\" usually means figuring it out from user complaints, which is a much slower, noisier, and more damaging feedback loop than having a real metric in place from day one. This isn't about blocking a launch on perfect measurement: it's that shipping with literally no way to detect a regression is qualitatively different from shipping with imperfect metrics, and the risk is specifically that problems go undetected, not just detected late."
- },
- "design-009": {
-  "key_concepts": [
-   "honest scope pushback",
-   "system design judgment over compliance"
-  ],
-  "answer": "Say so: the job isn't to deliver the requested artifact regardless of whether it's the right solution, it's to solve the actual underlying problem well, and an interviewer (or a real stakeholder) asking for \"an agent\" almost always actually wants the problem solved, not specifically an agent for its own sake. Flagging \"I think a simpler approach would work better here, and here's why\" demonstrates exactly the system-design judgment this chapter is about. Reflexively delivering what was asked for even when you can see a better answer is the opposite of the judgment an interviewer showing you this scenario is actually trying to assess."
- },
- "deploy-001": {
-  "key_concepts": [
-   "canary health metrics",
-   "offline vs. online divergence",
-   "drift detection"
-  ],
-  "answer": "Online signals that reflect actual user behavior rather than a benchmark's prediction of it: task completion/resolution rate, follow-up or clarification rate (a spike suggests the answer isn't actually landing even if it scores well offline), refusal rate (a subtle but real regression an offline benchmark might not weight heavily), and explicit feedback. In a deployment context specifically, this is exactly what canary-stage health checks should be monitoring in production traffic, not just what a one-time offline eval measured before shipping — the offline score improving doesn't guarantee the online signals move the same direction."
- },
- "deploy-002": {
-  "key_concepts": [
-   "canary threshold calibration",
-   "quiet regression",
-   "drift detection gap"
-  ],
-  "answer": "It tells you the canary health check's *threshold* was miscalibrated, not that having a canary stage was pointless — something passed every stage of the rollout without tripping any check, which means whatever threshold was in place was set too loosely to catch the actual magnitude of the regression that was happening. The fix isn't abandoning canary rollouts, it's recalibrating the threshold against what a real, meaningful regression's magnitude actually looks like, rather than picking a round number that sounds conservative without checking it against real data."
- },
- "deploy-003": {
-  "key_concepts": [
-   "threshold calibration against real regression magnitude",
-   "canary health check design"
-  ],
-  "answer": "The threshold is very likely set well above the magnitude of a real regression — a round, \"conservative-sounding\" number (e.g. flagging only a 50-point swing) can easily sail past a genuine, serious regression that's actually much smaller in magnitude (e.g. 30 points) but still very real and very much worth catching. The logic of \"compare canary to stable and flag a divergence\" is sound; the number it's compared against needs to be calibrated against what an actual regression looks like, not picked for how safe it sounds."
- },
- "deploy-004": {
-  "key_concepts": [
-   "automated checks are only as good as their calibration",
-   "postmortem on threshold, not just process"
-  ],
-  "answer": "Whether the automated check's actual threshold was calibrated against a real regression's typical magnitude, or just picked as a round, safe-sounding number without being tested against anything — \"the automated process said it was safe\" is only a complete explanation if the process's thresholds were actually validated to catch regressions of the size that shipped; if they weren't, the process didn't fail, its calibration did, and that's a fixable, specific finding rather than a vague \"the process let us down.\""
- },
- "deploy-005": {
-  "key_concepts": [
-   "shadow deployment measures offline only",
-   "real user behavior differs from offline comparison"
-  ],
-  "answer": "Shadow deployment compares offline, against whatever traffic sample and comparison metric you chose to evaluate against — it doesn't expose the new version to real user reactions (explicit feedback, follow-up behavior, actual satisfaction) at all, since by design nothing shadow-deployed is ever shown to a real user. Live canary monitoring is what actually measures real user response once the version is genuinely serving traffic; shadow deployment reduces risk by catching issues *before* that exposure, it doesn't substitute for measuring what happens once real exposure begins."
- },
- "deploy-006": {
-  "key_concepts": [
-   "upstream model drift",
-   "pinning model versions",
-   "continuous monitoring independent of your own deploys"
-  ],
-  "answer": "Since there's no corresponding change in your own version history to roll back to, the mitigation has to be independent of your own deploy process: pin to explicit model versions/snapshots where the provider offers them, rather than a stable \"latest\"-style alias, so a provider-side change requires an explicit opt-in on your side instead of arriving silently; and run drift-detection monitoring continuously against production traffic, not just during your own rollout events, since the \"change\" here can happen at any time with no deploy of yours to trigger a check."
- },
- "deploy-007": {
-  "key_concepts": [
-   "immutable prompt versioning",
-   "rollback requires real version history",
-   "in-place edits break rollback"
-  ],
-  "answer": "Rollback breaks because \"rolling back to version 3\" only works if version 3 is an immutable, unchanged historical record — an in-place edit means whatever key or label pointed at \"version 3\" now points at the edited text instead, so there's nothing distinct left to roll back *to*. The fix is treating every prompt change as a new version, never an edit to an existing one, so a `current_version` pointer can always be moved back to something that genuinely hasn't changed."
- },
- "deploy-008": {
-  "key_concepts": [
-   "immutable version history",
-   "audit trail",
-   "version pointer vs. mutable value"
-  ],
-  "answer": "Trust it if there's a real, immutable version history you can inspect — an actual record showing what \"version 3\" contains, when it was published, and that it hasn't been silently altered since. Don't trust a bare claim of \"version 3\" if the underlying system allows in-place edits under the same version label, since in that case the label is really just a mutable pointer with no guarantee the content it currently refers to is what was originally published under that name."
- },
- "deploy-009": {
-  "key_concepts": [
-   "risk-proportional rollout caution",
-   "quiet failure modes justify caution even for small changes"
-  ],
-  "answer": "Agree to skip it for changes with an obviously bounded, immediately-visible failure mode: a genuine typo fix where any problem would be instantly and unambiguously obvious, not a subtle behavior shift. Insist on the canary anyway for anything whose failure mode could plausibly be *quiet*: a wording change is exactly the kind of thing that can shift refusal rate, tone, or helpfulness in a way that looks like a normal, well-formed response and would only show up as a metric drift, not an error. And \"it's just a small wording change\" is not, by itself, evidence that its failure mode (if any) would be loud rather than quiet."
- },
- "struct-001": {
-  "key_concepts": [
-   "schema-constrained decoding",
-   "removing the failure mode vs. responding to it",
-   "retry only helps transient failures",
-   "validation is still required"
-  ],
-  "answer": "Schema-constrained decoding at the API level — JSON mode, `response_format`, or a grammar — so an invalid token cannot be generated at all. The reason it beats the alternatives is structural, not empirical: it removes the failure mode, where every alternative responds to it. A retry loop assumes the malformation is transient; when the same prompt, schema, and model produce the same broken shape every time, retrying reproduces it exactly and the budget just multiplies the bill. A repair pass (strip fences, find braces) fixes noise wrapped AROUND the JSON and can do nothing about broken syntax INSIDE it — an unquoted key survives every trim you can write. A larger model lowers the rate rather than guaranteeing anything, which is arguably worse, since a 0.5% malformation rate no longer reproduces in staging. Raising temperature is the opposite of a fix. The one caveat to state unprompted: the grammar guarantees syntax and schema, not correctness, so validation stays."
- },
- "struct-002": {
-  "key_concepts": [
-   "JSON mode / schema-constrained decoding",
-   "wrapper noise vs. syntax corruption",
-   "repair as a safety net, not the mechanism"
-  ],
-  "answer": "Use JSON mode or schema-constrained decoding at the API level. Fences and preamble are the model being conversational, and constraining the output format stops it at the source. The class the fix in question — a repair/trim pass — would NOT handle is corruption inside the JSON itself: an unquoted key (`{name: \"numpy\"}`), a trailing comma before the closing brace, a truncated object from hitting the output token limit. Those are the interesting failures precisely because no amount of stripping the outside makes the inside parse. That split is the whole argument: a repair pass is a reasonable safety net and a bad primary mechanism."
- },
- "struct-003": {
-  "key_concepts": [
-   "systematic vs. transient failure",
-   "retries need independent trials",
-   "content colliding with JSON encoding",
-   "truncation vs. malformation"
-  ],
-  "answer": "ACME's failures are systematic, not transient, and a retry loop can only fix the transient kind. For the other tenants, malformation is a sampling accident, so a fresh generation is a genuinely independent trial and the error rate falls geometrically with attempts. For ACME, something in their input makes the model produce the identical broken output every time. Likely causes, in rough order: content that collides with the JSON encoding (unescaped quotes or backslashes in a company name or file path), non-ASCII text shifting tokenization around the structural characters, a required field genuinely absent from their documents so the model improvises, or — importantly — inputs long enough to hit the output token limit, which truncates mid-object and is 100% reproducible. Check `finish_reason` before concluding anything about format; truncation is not a format problem and constrained decoding will not fix it either. Ship: constrained decoding for the format failures, a length/truncation check, and a rule that a retry only fires when the second attempt is actually an independent trial."
- },
- "struct-004": {
-  "key_concepts": [
-   "syntactic vs. semantic guarantees",
-   "hallucination under required fields",
-   "cross-field and business-rule validation"
-  ],
-  "answer": "The guarantee covers parse-ability and schema conformance: required fields present, types correct, no extra keys. That genuinely does replace the parser — the fence-stripping and try/except layer can go. It covers nothing about whether the content is right. Values can simply be wrong (a decoder that masks correctly but picks the wrong legal token returns perfect JSON with garbage in it). Values can be hallucinated, and constrained decoding makes this actively worse on absent fields: if `version` is required and non-nullable, the model has no legal way to say 'not in the document', so it must invent one — the constraint becomes a fabrication requirement. Cross-field consistency (start after end, a total that isn't the sum of line items) and business rules (an amount outside any plausible range, an ID referring to nothing) are entirely unchecked. So: constrained decoding is a syntactic and structural guarantee, validation is a semantic one, and only the JSON-repair code is genuinely redundant."
- },
- "struct-005": {
-  "key_concepts": [
-   "required non-nullable fields force fabrication",
-   "nullable as a representable 'absent'",
-   "three-outcome success condition",
-   "per-field null-rate monitoring"
-  ],
-  "answer": "The schema is causing it. Under a strict required-field schema with constrained decoding, a field that is genuinely not present in the document has no legal representation — the model cannot emit 'absent', so it must emit some string, and it emits a plausible one. The schema has converted a missing value into a fabricated one, silently, and 'success' counts it. Restructure it three ways. First, make genuinely-optional fields nullable, with null explicitly documented as the value to use when the document doesn't contain the field, so 'absent' becomes representable rather than forbidden. Second, replace the two-outcome success condition with three: `ok` (parsed, on-schema, all required fields populated), `incomplete` (parsed and on-schema but a required field is null — a document problem, routes to human review, retrying will not help), and `failed` (did not parse or conform — a pipeline problem, worth a retry and an alert). Collapsing `incomplete` into `failed` produces phantom retry storms; collapsing it into `ok` is what finance is seeing. Third, monitor the null rate per field rather than the aggregate success rate: a field that jumps from 30% null to 80% overnight signals an upstream change and is invisible in a metric that counts those records as successes."
- },
- "struct-006": {
-  "key_concepts": [
-   "the contract is the schema, not the parse",
-   "valid JSON with a missing field",
-   "separating document problems from pipeline problems"
-  ],
-  "answer": "Because `json.loads` succeeding says only that the bytes were well-formed — it says nothing about the contract being satisfied. The specific failure it misses: a model that cannot find a field in the source will often just leave it out and emit flawless JSON without it. A success condition built on 'did it parse' accepts that half-filled record and passes it downstream looking complete. Replace it with a check against the schema — parsed AND every required field present AND types correct — and then split failure into two kinds that need different responses: a document problem (parsed and on-schema, but a required value is genuinely absent from the source) routes to human review and must never be retried, while a pipeline problem (did not parse or did not conform) is worth a bounded retry and an alert if the rate moves. Those three outcomes are the minimum; two is what produces both phantom retry storms and silent data loss."
- }
+  "loop-001": {
+    "key_concepts": [
+      "max-iteration guard",
+      "duplicate-observation detection",
+      "semantic cycle detection"
+    ],
+    "answer": "Detection needs at least two independent layers: a hard max-iteration cap as the absolute backstop (cheap, always catches a truly runaway agent), and a smarter check for the common case where the agent is technically varying its output slightly but making no real progress — exact-match duplicate-observation detection catches literal repeats, but a semantic similarity check (e.g. comparing successive Thought/Action pairs with something like difflib's SequenceMatcher, or an embedding-similarity threshold) catches the more common case where wording shifts slightly each turn without the underlying state actually changing. Stopping means failing loudly with the partial trace, not silently truncating."
+  },
+  "loop-002": {
+    "key_concepts": [
+      "max-iteration guard",
+      "hard iteration cap"
+    ],
+    "answer": "A hard max-iteration cap, full stop, before anything cleverer. It's the cheapest possible safeguard, it can never itself have a bug that lets a loop through (an off-by-one aside), and it bounds the worst case in both cost and latency even if every smarter detector has a gap. Add duplicate-observation and semantic-cycle detection on top once the basic cap is in place — they catch loops earlier and more gracefully, but the cap is the thing you can't ship without."
+  },
+  "loop-003": {
+    "key_concepts": [
+      "max-iteration guard",
+      "cost monitoring",
+      "duplicate-observation detection"
+    ],
+    "answer": "First check: pull the actual trace for that ticket and look at whether the same tool call (or a near-identical one) is repeating. That immediately tells you whether this is a literal loop (same call, same result, agent re-decides to call it again) or a slow-but-legitimate multi-step task. Cheapest fix to ship today: a hard iteration cap (e.g. 15-20 turns) that fails the request loudly instead of letting it run — it won't fix the root cause, but it bounds the cost and latency blast radius immediately while a real fix (duplicate-observation or semantic-cycle detection) gets built properly."
+  },
+  "loop-004": {
+    "key_concepts": [
+      "loop detection",
+      "cost/latency",
+      "max-iteration guard"
+    ],
+    "answer": "This is very likely an unbounded agent loop. Walk them through the trace showing the agent repeatedly calling the same tool (or a close variant) without a stopping condition catching it. The fix isn't one thing: a hard iteration cap bounds the worst case immediately, duplicate-observation detection catches literal repeats, and for cases where the wording varies slightly each turn without real progress, a semantic similarity check is what actually catches it. Frame the cost as a symptom of a missing safeguard, not an inherent cost of using agents at all — that distinction matters for whether leadership trusts agents going forward."
+  },
+  "loop-005": {
+    "key_concepts": [
+      "semantic cycle detection",
+      "duplicate-observation detection",
+      "hash-based vs. semantic guards"
+    ],
+    "answer": "A simple iteration cap is necessary but not sufficient here: it'll eventually stop the waste, but only after burning a lot of calls, and it doesn't distinguish \"legitimately taking many steps\" from \"stuck.\" What actually catches this earlier is duplicate-observation or semantic-cycle detection applied across the *pair* of agents' combined trace, not each agent's own history in isolation — the cycle is between them, so a guard that only looks at one agent's own repeated actions can miss a back-and-forth pattern that never repeats identically from either agent's individual point of view."
+  },
+  "loop-006": {
+    "key_concepts": [
+      "semantic cycle detection",
+      "limits of hash-based cycle detection"
+    ],
+    "answer": "Exact-match hashing misses semantically-identical-but-differently-worded outputs — an agent re-deriving \"I should check the inventory database\" as slightly different phrasing each turn will hash differently every time even though it's the same decision on repeat. The fix is a semantic similarity check (embedding cosine similarity, or a simpler text-similarity measure like difflib's SequenceMatcher) with a threshold, comparing recent Thought/Action pairs rather than requiring byte-for-byte identity."
+  },
+  "loop-007": {
+    "key_concepts": [
+      "chatbot vs. workflow vs. agent",
+      "single-step vs. multi-step decision-making"
+    ],
+    "answer": "The test isn't \"does it use an LLM,\" it's \"does it need to make more than one sequential decision based on what just happened.\" A three-bullet-point summary is a single-shot transformation — input in, output out, no intermediate decision that depends on an observation from a prior step. That's a single LLM call, not an agent, regardless of how good the model behind it is. If a follow-up requirement appeared (e.g. \"look up related documents first, then summarize using only relevant ones\") that would introduce a real multi-step decision and change the answer."
+  },
+  "loop-008": {
+    "key_concepts": [
+      "ReAct",
+      "Thought",
+      "Action",
+      "Observation"
+    ],
+    "answer": "Thought: the model reasons about what to do next, in natural language, before acting. This is what makes the process interpretable and lets the model change course based on new information. Action: the model selects and calls a tool with specific arguments, based on the preceding Thought. Observation: the tool's real result gets fed back into context, becoming the input to the next Thought. The loop repeats until the model decides it has enough information to produce a final answer instead of another action — the interleaving of reasoning and acting (rather than planning everything up front, or acting with no reasoning at all) is the core idea the pattern is named for."
+  },
+  "loop-009": {
+    "key_concepts": [
+      "when NOT to use an agent",
+      "deterministic vs. probabilistic control flow"
+    ],
+    "answer": "Agree when the actual logic really is a small number of well-understood, stable cases: a decision tree is faster, cheaper, fully deterministic, and has zero LLM-related security surface for exactly that kind of problem, and reaching for an agent there adds cost and unpredictability for no benefit. Push back when the input space is large or fuzzy enough that the \"tree\" would need to keep growing branches to cover new cases as they show up — that's usually the sign the task actually needs judgment under uncertainty rather than a fixed set of rules, which is exactly what an agent is suited for and a decision tree isn't."
+  },
+  "agents-001": {
+    "key_concepts": [
+      "coordination overhead",
+      "context isolation",
+      "supervisor-worker pattern"
+    ],
+    "answer": "Adding agents is a bad call when the coordination overhead (extra round-trips, a synthesis/summarization step, serialized rather than parallel work) exceeds whatever specialization benefit splitting the task was supposed to buy. Concretely: if the subtasks aren't actually independent (each one needs the others' output before it can start), splitting them across agents just adds latency with no parallelism benefit; and even when they are independent, every agent boundary costs at least one extra context-assembly and synthesis step that a single agent doing the same work end-to-end wouldn't pay. The right question isn't \"could this be multiple agents\" but \"does this specific task have a real reason (genuine parallelism, or a real need for isolated context) that a single agent doesn't already handle.\""
+  },
+  "agents-002": {
+    "key_concepts": [
+      "coordination overhead",
+      "synthesis cost",
+      "context isolation tradeoffs"
+    ],
+    "answer": "The 3x expectation assumes the subtasks are both independent and equally sized, and that dividing them costs nothing — none of that is free in practice. Real costs: each agent needs its own context assembled (which isn't instant), the orchestrator has to wait for the slowest of the three before it can synthesize a combined result (so total latency is bounded by the slowest branch, not the average), and the synthesis step itself is extra work a single agent doing everything sequentially never had to do. If the three subtasks also have any real dependency between them, some of that \"parallel\" work is actually serialized behind a wait, eating further into the expected speedup."
+  },
+  "agents-003": {
+    "key_concepts": [
+      "tracing per-hop latency",
+      "supervisor-worker pattern",
+      "unnecessary hops"
+    ],
+    "answer": "Trace each hop's latency individually (Chapter 2's tracing pattern applies directly here) rather than treating \"multi-agent\" as one cost. Specifically check: are all four agents' calls actually running in parallel, or is the orchestrator waiting on each sequentially without realizing it; is there a hop that adds no real value (an agent that just passes data through with no transformation); and how much of the total latency is the synthesis/aggregation step at the end versus the agents' own work. \"Multi-agent is modern\" isn't itself a reason to keep an architecture that's measurably 3x slower. Cut whichever hops the trace shows aren't earning their cost."
+  },
+  "agents-004": {
+    "key_concepts": [
+      "when NOT to use multi-agent",
+      "architectural judgment",
+      "coordination overhead"
+    ],
+    "answer": "Before committing to the architecture: does this task have genuinely independent subtasks that benefit from parallel execution, or a real need for isolated context (e.g. one agent needs to see untrusted content the others shouldn't)? What's the expected latency/cost overhead of coordination, estimated concretely rather than assumed away? What would the single-agent version's actual limitation have been — is there a specific failure mode multi-agent solves, or is this architecture-first thinking? A retro finding \"not measurably better\" after a full quarter is exactly the outcome that question 0 of a proper design framework (does this need multi-agent at all) is meant to catch before the build starts, not after."
+  },
+  "agents-005": {
+    "key_concepts": [
+      "context isolation",
+      "leaky subagents",
+      "compressed synthesis vs. leaky return"
+    ],
+    "answer": "Beyond raw token cost, a leaky subagent return pollutes the orchestrator's own context with irrelevant intermediate noise. Every subsequent decision the orchestrator makes has to reason around a bloated, mostly-irrelevant transcript instead of a clean summary of what actually matters. This degrades decision quality (more noise to filter through), increases the chance of the orchestrator getting confused by an intermediate dead-end the subagent already resolved, and defeats the actual point of context isolation, which is that the orchestrator should only ever see a clean, synthesized result, not relive the subagent's entire process."
+  },
+  "agents-006": {
+    "key_concepts": [
+      "supervisor-worker pattern",
+      "context isolation",
+      "specialization tradeoffs"
+    ],
+    "answer": "Genuine, mutually-independent parallelism (the five tasks don't depend on each other's output and really can run concurrently) or a real isolation need (one tool's output is untrusted/verbose/irrelevant to the others and shouldn't pollute a shared context) — either of those is a real reason. Simply \"it has five tools\" isn't, by itself, a reason: a single agent with five tools and good judgment about which to call when is often simpler, cheaper, and just as effective, and multi-agent should be justified by a concrete benefit the single-agent version can't get, not by tool count alone."
+  },
+  "agents-007": {
+    "key_concepts": [
+      "ReAct vs. plan-and-execute",
+      "fixed workflow vs. dynamic reasoning"
+    ],
+    "answer": "Plan-and-execute, not ReAct — if the steps and their order are fixed and known in advance, that's closer to a deterministic workflow than something that needs step-by-step reasoning about what to do next based on what just happened. ReAct's value is adapting each step based on the previous observation; if there's no real adaptation happening (the five steps run in that order every time regardless of what any step returns), a fixed pipeline is simpler, more predictable, and easier to debug than paying for an LLM's reasoning at each step when the reasoning never actually changes the outcome."
+  },
+  "agents-008": {
+    "key_concepts": [
+      "semantic cycle detection",
+      "hash-based cycle detection limits",
+      "multi-agent loops"
+    ],
+    "answer": "A max-iteration guard should have caught the runaway cost eventually, but the real gap is earlier: exact-match (hash-based) duplicate-observation detection likely didn't catch this because each round's handoff message probably wasn't byte-for-byte identical, just different phrasing and different framing of the same underlying stuck state. What actually catches this is semantic cycle detection, comparing the *meaning* of successive handoffs (e.g. via embedding similarity or a text-similarity measure) rather than requiring literal repetition, since two agents stuck in a real cycle rarely phrase every round identically."
+  },
+  "agents-009": {
+    "key_concepts": [
+      "context isolation",
+      "subagent patterns",
+      "compressed synthesis"
+    ],
+    "answer": "Mechanically, context isolation means the orchestrator's own context window never contains the subagent's full internal working state — its intermediate tool calls, dead ends, and reasoning steps stay inside the subagent's own separate context and never get appended to the orchestrator's history. What crosses the boundary back to the orchestrator is only the subagent's final, synthesized result. This protects the orchestrator from context bloat (the subagent's noise never accumulates in the main thread), and it means a messy or exploratory subagent process doesn't degrade the orchestrator's own reasoning quality on later steps."
+  },
+  "rag-001": {
+    "key_concepts": [
+      "faithfulness",
+      "recall@k",
+      "groundedness"
+    ],
+    "answer": "Faithfulness (does the generated answer's claims actually appear in / follow from the retrieved documents) tells you whether generation is the problem; recall@k (did the retriever surface the right document(s) at all) tells you whether retrieval is the problem. Check them in that order: first confirm the right document was actually retrieved (recall@k on that query) — if it wasn't, the fix is retrieval-side (chunking, embeddings, query reformulation); if it was retrieved but the answer still doesn't reflect it, faithfulness is low and the fix is generation-side (a better prompt enforcing groundedness, or a stricter generation strategy)."
+  },
+  "rag-002": {
+    "key_concepts": [
+      "faithfulness",
+      "groundedness",
+      "retrieval vs. generation failure"
+    ],
+    "answer": "Check whether the cited document was actually retrieved and made it into the model's context in the first place. If it wasn't (or a wrong document was retrieved instead), it's a retrieval bug. If the right document genuinely was in context and the model still stated something not supported by it, that's a generation/faithfulness bug: the model ignored or misread grounded content it had access to. This is exactly why logging what was actually retrieved per request matters: without it, you're guessing which stage failed instead of checking."
+  },
+  "rag-003": {
+    "key_concepts": [
+      "recall@k measures retrieval only",
+      "faithfulness scoring",
+      "generation-stage failure"
+    ],
+    "answer": "recall@5 only measures whether the relevant document showed up in the top 5 results — it says nothing about what the model actually did with that document once it had it. A system can have excellent recall and still generate answers that misstate, over-extend, or ignore the retrieved content entirely; that's a faithfulness problem, a completely separate failure mode from retrieval that recall@k was never designed to catch. The fix is adding a faithfulness metric (checking generated claims against retrieved text) alongside recall, not replacing it."
+  },
+  "rag-004": {
+    "key_concepts": [
+      "precision@k",
+      "mean reciprocal rank",
+      "rank-sensitive metrics"
+    ],
+    "answer": "Precision@1 only checks the very top result, so it would score this as a miss (the best document is at rank 3, not rank 1) even though the system did eventually surface the right document within a reasonable window. MRR rewards it partially (1/3 instead of 0) because it accounts for *where* in the ranking the first relevant result appears, not just whether it's exactly first. Prefer MRR when a user (or a downstream generation step) is likely to consider a few top results, not just the single first one; prefer precision@1 when only the very top result actually matters, e.g. a UI that only ever shows one answer."
+  },
+  "rag-005": {
+    "key_concepts": [
+      "chunking strategy",
+      "corpus quality",
+      "near-duplicate documents",
+      "confusable content"
+    ],
+    "answer": "A bigger embedding model won't help if the actual bottleneck is chunking (documents split at bad boundaries, losing context needed to match a query correctly), corpus quality (near-duplicate or confusable documents that even a great embedding model can't reliably distinguish, since the ambiguity is in the content, not the encoding), or the underlying documents themselves being sparse/outdated/wrong. Before assuming embeddings are the bottleneck, check whether the corpus has near-duplicate documents that would confuse any retriever, and whether chunk boundaries are cutting relevant content into pieces that individually don't match the query well."
+  },
+  "rag-006": {
+    "key_concepts": [
+      "faithfulness scoring",
+      "retrieved-context logging",
+      "debuggability"
+    ],
+    "answer": "At minimum: the exact query, the full list of retrieved documents/chunks with their ranks and similarity scores, which chunks were actually included in the final prompt (post-truncation, if applicable), and the generated answer's text. With that, you can independently check recall (was the right doc retrieved at all) and faithfulness (does the answer's content actually match what was retrieved) after the fact — without logging what was retrieved specifically, a wrong answer is undebuggable, since you can't tell whether retrieval or generation is at fault after the request is long gone."
+  },
+  "hallu-001": {
+    "key_concepts": [
+      "hallucination",
+      "RAG reduces but doesn't eliminate hallucination",
+      "faithfulness"
+    ],
+    "answer": "RAG reduces hallucination by giving the model real source material to ground its answer in, but it doesn't eliminate it: the model can still ignore, misread, or over-extend what it was given, the same way a person given the right reference material can still misquote it. Retrieval fixes \"the model doesn't know this\" but not \"the model sometimes states things confidently that aren't actually supported by what it was shown.\" Those are two separate failure modes, and RAG only addresses the first one directly."
+  },
+  "hallu-002": {
+    "key_concepts": [
+      "RAG reduces but doesn't eliminate hallucination",
+      "faithfulness",
+      "generation-stage failure"
+    ],
+    "answer": "Acknowledge the premise is half right (RAG genuinely does reduce hallucination, by giving the model real material to draw from instead of relying purely on what it memorized during training), but correct the \"fixes\" framing directly: it lowers the *rate*, it doesn't guarantee zero, because the model can still misstate or over-extend what it was given even when the right source material is right there in front of it. Pair that with something concrete: what faithfulness monitoring is already in place to catch this class of error before it reaches a user, so the correction comes with a real answer, not just a caveat."
+  },
+  "hallu-003": {
+    "key_concepts": [
+      "hallucination",
+      "next-token prediction",
+      "no built-in truth-checking"
+    ],
+    "answer": "A language model is trained to predict plausible next words based on patterns in its training data, not to check whether a specific claim is factually true — so it can produce a confident, fluent, well-formed sentence that happens to be false, because \"sounds right\" and \"is right\" aren't the same thing the model is optimizing for. There's no built-in fact-checker running alongside it; anything that looks like fact-checking has to be added on top (like grounding it in retrieved real documents), not assumed to already be there."
+  },
+  "hallu-004": {
+    "key_concepts": [
+      "hallucination has real business/legal consequences",
+      "faithfulness checking before serving an answer",
+      "you own what your chatbot says"
+    ],
+    "answer": "The real production fix here is a faithfulness check between what the chatbot's source material actually says and what it tells the customer, before the response is served. If the airline's actual policy said no retroactive bereavement-fare applications, a faithfulness check comparing the chatbot's claim against the real policy document should have caught the contradiction before it reached the customer. On accountability: the tribunal's actual finding was that the airline was responsible for everything on its own website, chatbot included, and that's the right frame for leadership too. A chatbot's output is the company's output, not some separate, disclaimable voice, so the safeguards need to be treated with the same seriousness as anything else customer-facing."
+  },
+  "hallu-005": {
+    "key_concepts": [
+      "hallucination can fabricate plausible-looking specifics",
+      "always verify against primary sources",
+      "high-stakes output needs a human-verification gate"
+    ],
+    "answer": "It demonstrates that hallucination isn't just \"the model gets small facts wrong\": it can fabricate entire, internally-consistent, plausible-looking specifics (case names, citations, docket numbers) that have zero basis in reality, confidently enough that trained professionals didn't catch it before submitting it to a real court. The general lesson: for any AI-assisted workflow where the output has real consequences, a human verification step against primary sources isn't optional polish, it's the actual safeguard. The model's fluency and confidence are not evidence of correctness, and treating them as if they were is exactly what went wrong here."
+  },
+  "hallu-006": {
+    "key_concepts": [
+      "hallucination is not fully eliminable",
+      "honest communication about model limitations",
+      "faithfulness as a mitigation, not a guarantee"
+    ],
+    "answer": "Push back specifically on the word \"never\": it's not just imprecise, it's a claim you can't actually back up and that will get disproven the first time a user hits an edge case, which is worse for trust than an honest caveat would have been. Suggest something accurate instead: describe what grounding/faithfulness work is actually in place (e.g. \"answers are checked against our official documentation before being shown\") without promising zero errors. That's both more honest and, done well, still reads as a strong, confidence-building claim rather than a hedge."
+  },
+  "evalgap-001": {
+    "key_concepts": [
+      "offline vs. online metrics",
+      "proxy metric divergence",
+      "user satisfaction signals"
+    ],
+    "answer": "Online signals that reflect what users actually do, not what a benchmark predicts they'd think: task completion / resolution rate (did the user's underlying need actually get met), follow-up or clarification rate (a spike suggests answers aren't landing even if they score well offline), explicit feedback (thumbs up/down, complaint volume), and retention/re-engagement for products where that's meaningful. The gap between an offline score and real satisfaction usually means the offline metric is measuring something correlated with quality but not identical to it — the online signals are closer to the actual goal, even though they're noisier and slower to collect."
+  },
+  "evalgap-002": {
+    "key_concepts": [
+      "offline metrics can diverge from real user outcomes",
+      "simulated vs. real satisfaction signals"
+    ],
+    "answer": "Whether the offline eval set's questions actually resemble real production traffic — a retriever can win on every offline metric against a benchmark that's grown stale or narrow relative to what users are actually asking now, while still performing worse on the traffic that matters. Also worth checking: whether the \"win\" is concentrated in cases that are already easy (inflating the aggregate score without moving the cases that were actually failing), and whether the change affects latency or cost in a way none of the correctness metrics would capture at all."
+  },
+  "evalgap-003": {
+    "key_concepts": [
+      "benchmark overfitting",
+      "distribution mismatch between eval set and real traffic",
+      "online monitoring"
+    ],
+    "answer": "Hypothesis: the internal benchmark's question distribution doesn't match what real users are actually asking. A benchmark can be static and narrow while real traffic keeps shifting, so a model can improve against the fixed benchmark while getting relatively worse on the traffic that's actually grown or changed. To test it: pull a sample of the real tickets driving the complaint, check whether those specific query patterns are represented in the benchmark at all, and if not, that's strong evidence the benchmark's coverage (not the model) is the actual problem."
+  },
+  "evalgap-004": {
+    "key_concepts": [
+      "eval set staleness",
+      "distribution drift",
+      "offline benchmark limitations"
+    ],
+    "answer": "A static eval set stops reflecting what users are actually asking as real usage patterns shift over time — new use cases, new phrasing, new edge cases that emerged after the set was written simply aren't represented, so a model can keep \"passing\" the same 50 questions while quietly regressing on everything that's changed since. Gating releases on a stale set gives false confidence: a clean pass doesn't mean the system is good on real current traffic, only that it's good on last year's traffic."
+  },
+  "evalgap-005": {
+    "key_concepts": [
+      "offline metrics are proxies, not the real goal",
+      "real user behavior as ground truth"
+    ],
+    "answer": "Offline metrics are proxies for what actually matters — a system can score well on precision, recall, and faithfulness against a fixed benchmark while still failing real users in ways the benchmark's specific questions never happened to probe. Online metrics measure the real thing (did an actual user's actual need get met) rather than a stand-in for it; they're noisier and slower, which is exactly why offline metrics stay useful for fast iteration, but neither one alone tells the whole story, which is the actual reason to track both."
+  },
+  "evalgap-006": {
+    "key_concepts": [
+      "latency as a real-world quality factor",
+      "online metrics beyond correctness",
+      "offline metrics don't capture everything"
+    ],
+    "answer": "Latency is a real quality factor users experience directly, even though it doesn't show up in precision/recall/faithfulness at all. A technically-tied retrieval strategy that's noticeably slower is very plausibly the worse choice once you account for it, since users experience wait time as part of the answer's quality whether or not any offline metric captures that. Confirm it online with something like task abandonment rate or time-to-completion for the slower version in an A/B test: if users are bailing out or getting frustrated before the (equally correct) answer even arrives, that's the online signal validating what the offline metrics alone couldn't tell you."
+  },
+  "reliability-001": {
+    "key_concepts": [
+      "context freshness",
+      "cache invalidation",
+      "staleness logging"
+    ],
+    "answer": "Start with the logs, not the code. If `context_age_seconds` (or an equivalent) is logged per response, check it for the affected requests first: a large value with the response served from cache points at a caching/invalidation bug; a small value (a fresh, live fetch) with still-wrong content points upstream, at the ingestion/indexing pipeline not having picked up the change at all. Without that field logged in the first place, you're debugging blind, and the first real fix, if it's missing, is adding it before anything else."
+  },
+  "reliability-002": {
+    "key_concepts": [
+      "cache invalidation on write",
+      "context freshness",
+      "stale index"
+    ],
+    "answer": "First hypothesis: the cache wasn't invalidated when the policy document was updated — either the invalidation trigger was never wired up for that document type, or it fired but the invalidation logic itself has a bug. Confirm by checking whether an invalidation event was even logged for that document's update three weeks ago; if there's no event at all, it's a missing trigger; if there is one, the invalidation logic itself needs debugging separately."
+  },
+  "reliability-003": {
+    "key_concepts": [
+      "context age logging",
+      "cache vs. live fetch",
+      "context freshness"
+    ],
+    "answer": "Check whether the response came from a cache or a live fetch, and how old the cached entry is: if `context_age_seconds` (or equivalent) isn't logged, that's the first gap to fix, since without it you can't distinguish \"stale cache\" from \"the indexing pipeline hasn't caught up yet,\" which are different bugs with different owners. A quick manual check in the meantime: query the same thing right after forcing a fresh fetch. If it's now correct, it was caching; if it's still wrong, the problem is upstream of the cache entirely."
+  },
+  "reliability-004": {
+    "key_concepts": [
+      "context age logging as an observable signal",
+      "proactive vs. reactive detection"
+    ],
+    "answer": "Log context age (time since the underlying content was last confirmed fresh) on every response, not just the ones a user happens to complain about, and alert on it crossing a threshold — that turns staleness from something only discoverable via a complaint into something observable continuously, the same way latency or error rate already is. Without that signal, staleness bugs are invisible by default; a single user complaint is the tip of an iceberg you otherwise have no way to see the rest of."
+  },
+  "reliability-005": {
+    "key_concepts": [
+      "TTL vs. invalidate-on-write",
+      "cache invalidation",
+      "shrinking vs. closing the staleness window"
+    ],
+    "answer": "It shrinks the window, it doesn't close it: a shorter TTL just means the maximum possible staleness drops from an hour to five minutes; it's still possible (and still a bug) for a request to land in that five-minute gap and get stale content. The real fix is cache invalidation on write: the moment the underlying content changes, the cache entry for it gets invalidated immediately, so there's no staleness window at all rather than a smaller one. TTL alone is a mitigation, invalidate-on-write is the actual fix."
+  },
+  "reliability-006": {
+    "key_concepts": [
+      "staleness only manifests after a write event",
+      "hard to reproduce without simulating time/updates"
+    ],
+    "answer": "Because the bug only manifests at the intersection of two events that don't naturally happen together in a typical test run: a write to the underlying data, and a read that should reflect it, with enough of a gap (real or simulated) between them for a cache/index to plausibly be out of sync. A test that writes and immediately reads back rarely exercises the actual staleness window a real production timeline creates — reproducing it usually requires either deliberately simulating time passing or specifically testing the invalidation path itself, not just normal read/write behavior."
+  },
+  "reliability-007": {
+    "key_concepts": [
+      "circuit breaker",
+      "retry with backoff",
+      "known-down vs. transient failure"
+    ],
+    "answer": "Circuit breaker, not retry — the outage isn't transient noise, it's a known, bounded window where the dependency is definitely down, so retrying just wastes time (every call still fails through its full backoff schedule) and adds load to a service that's already down for maintenance, for zero benefit. A circuit breaker opens after the first few failures and stops trying until the window passes, which is both faster to fail and kinder to the maintaining service than a retry loop that can't succeed no matter how many times it tries."
+  },
+  "reliability-008": {
+    "key_concepts": [
+      "thundering herd",
+      "jitter",
+      "exponential backoff"
+    ],
+    "answer": "This is very likely retries without jitter causing a thundering herd: if every client retries on the same fixed schedule (e.g. everyone retries exactly 1 second after a failure), all of them hit the service again at the same moment, and if that moment happens to land during one of the service's bad minutes, the retry burst itself can make the bad minute worse or longer. The fix is adding randomized jitter to each client's backoff schedule, so retries spread out over time instead of synchronizing. Exponential backoff alone reduces the rate of retries but doesn't prevent this synchronization problem on its own."
+  },
+  "reliability-009": {
+    "key_concepts": [
+      "exponential backoff",
+      "jitter",
+      "rate-limit handling"
+    ],
+    "answer": "On a 429: don't retry immediately — back off, with the delay increasing on each subsequent failure (exponential backoff) so repeated rate-limiting doesn't just retry into the same wall faster; add randomized jitter to that delay so many concurrent clients hitting the same limit don't all retry in lockstep and cause a synchronized second wave; respect a `Retry-After` header if the API provides one, since that's the provider telling you exactly how long to wait rather than you guessing; and cap the total number of retry attempts so a persistently rate-limited request fails cleanly rather than retrying forever."
+  },
+  "cost-001": {
+    "key_concepts": [
+      "duplicate-call bug",
+      "unbounded context growth",
+      "model routing",
+      "prompt caching"
+    ],
+    "answer": "Before adding capacity, check for the cheap wins that don't cost anything to try: a duplicate-call bug (a non-idempotent retry path silently doubling token volume on some requests — diagnosable from a token-volume step change in the request log with no matching change in query complexity); unbounded context growth in any conversational flows (input tokens creeping up turn over turn with no truncation policy); and whether model routing is actually in place (simple requests going to an expensive model by default instead of a cheaper one that would do just as well). Only after ruling those out does prompt caching or genuine capacity/GPU scaling become the right next lever."
+  },
+  "cost-002": {
+    "key_concepts": [
+      "traffic volume vs. per-request cost",
+      "request log analysis",
+      "duplicate-call bug"
+    ],
+    "answer": "Since nothing was deployed, the cause is either a change in traffic *pattern* (not volume, e.g. more retries, more duplicate calls, longer conversations) or something upstream that changed without a corresponding deploy on your side (a client-side bug generating extra calls, a scheduled job that started running more often). Pull the request log and compare this month's average tokens-per-request and calls-per-user-session against last month's: if either climbed with no deploy to explain it, that narrows the search to a behavioral change in usage patterns rather than a code change."
+  },
+  "cost-003": {
+    "key_concepts": [
+      "request volume growth vs. per-request cost",
+      "aggregate vs. per-request metrics"
+    ],
+    "answer": "A normal per-request average can hide a real problem if the *number* of requests went up — the bill is total volume × average cost, and \"average cost per request looks fine\" says nothing about whether the request count itself quietly grew (more retries, more duplicate calls, more sessions) or whether a small subset of requests are wildly more expensive than the average, pulling the total up without moving the mean much. Check total request count and the cost distribution (not just the average) before ruling out a per-request explanation."
+  },
+  "cost-004": {
+    "key_concepts": [
+      "model routing by task complexity",
+      "quality regression risk",
+      "not a blanket downgrade"
+    ],
+    "answer": "A blanket switch to the cheapest model risks a real quality regression on tasks that actually need the stronger model's capability — multi-step reasoning, tool-heavy tasks, or anything where a wrong answer is costly, could start failing silently in ways that don't show up until users notice. The better lever is model *routing*: send simple, well-understood requests to the cheap tier and keep the strong tier for tasks that genuinely need it, rather than downgrading everything uniformly and hoping nothing that mattered was affected."
+  },
+  "cost-005": {
+    "key_concepts": [
+      "unbounded context growth",
+      "context window policy",
+      "conversation truncation/summarization"
+    ],
+    "answer": "Likely root cause: no context window policy. Every turn of the conversation gets appended to the prompt with nothing ever truncated or summarized, so input tokens (and cost) grow roughly linearly with conversation length. The fix is a bounded context policy: a sliding window that keeps only the most recent N turns, periodic summarization of older turns, or both, capping how much history gets re-sent on every call instead of letting it grow without bound."
+  },
+  "cost-006": {
+    "key_concepts": [
+      "duplicate-call bug",
+      "idempotency",
+      "token-volume step change diagnostic signature"
+    ],
+    "answer": "Look for a token-volume step change on a specific slice of requests with no corresponding change in what users were actually asking — e.g. a run of requests whose input/output tokens are roughly double their neighbors' for no query-complexity reason. That signature (a jump in volume with no complexity explanation) is the diagnostic tell for a duplicate-call bug; confirm by checking whether those specific request IDs show two near-identical calls close together in time, which a properly logged idempotency key would make immediately visible."
+  },
+  "latency-001": {
+    "key_concepts": [
+      "latency decomposition",
+      "queueing vs. inference vs. generation",
+      "queue depth"
+    ],
+    "answer": "Check the latency decomposition first (queueing, network, inference [prefill], and generation [decode]) before touching anything else, since \"latency jumped\" could mean any of the four and each has a completely different fix. Specifically: pull queue_depth/queue_time_ms for the affected window; if that's what spiked while token counts and per-token processing rates look normal, it's a capacity/queueing problem, not a model problem, and the fix is different (backpressure or added capacity) than if inference or generation time itself had grown."
+  },
+  "latency-002": {
+    "key_concepts": [
+      "queueing vs. inference bottleneck",
+      "latency decomposition",
+      "capacity vs. model-speed problem"
+    ],
+    "answer": "It's right when the bottleneck is genuinely queueing: too many concurrent requests for available capacity, confirmed by queue_depth or queue_time_ms actually spiking while per-token processing rates look normal; more GPUs adds queueing capacity and directly helps there. It's a waste when the slowdown is in inference or generation time itself (a slower model, GPU contention from something else, a serving-stack regression). More GPUs doesn't make a genuinely slower per-token rate faster, so throwing capacity at a non-capacity problem burns money without fixing the actual latency source."
+  },
+  "latency-003": {
+    "key_concepts": [
+      "queueing",
+      "latency decomposition ruling out inference/generation"
+    ],
+    "answer": "If token counts per request are normal, that rules out both inference (prefill scales with input tokens) and generation (decode scales with output tokens) as the cause of a p99 spike this large — normal tokens with a 6x latency jump points squarely at queueing: too many concurrent requests competing for capacity, with each individual request's *processing* still normal-speed once it actually starts, it's just waiting longer to start."
+  },
+  "latency-004": {
+    "key_concepts": [
+      "queueing",
+      "network",
+      "inference (prefill)",
+      "generation (decode)"
+    ],
+    "answer": "Queueing (waiting for a worker/GPU to free up), network (time on the wire, not on any GPU), inference/prefill (processing the input prompt), and generation/decode (producing the output, token by token). Model choice affects inference and generation directly (a faster or smaller model processes/generates faster per token) but has no direct effect on queueing or network time — those are capacity and infrastructure problems, not model problems, which is exactly why conflating \"latency is high\" with \"the model is slow\" leads to the wrong fix."
+  },
+  "latency-005": {
+    "key_concepts": [
+      "queueing spike from concurrent load",
+      "backpressure",
+      "blast radius of shared capacity"
+    ],
+    "answer": "Expect a real queueing-driven latency spike for other traffic sharing the same capacity — the batch job adds a large burst of concurrent load competing for the same limited GPU/worker capacity as normal user-facing requests, so queue depth rises and everything behind it in line waits longer, even though nothing about any individual user-facing request changed. This is the shared-capacity blast-radius problem: one workload's burst degrades every other workload sharing the same pool, which is exactly why batch jobs are normally scheduled off-peak and why backpressure/load-shedding matters for protecting latency-sensitive traffic from bursty background work."
+  },
+  "latency-006": {
+    "key_concepts": [
+      "queue_depth / queue_time_ms as a diagnostic signal",
+      "stage-level latency logging"
+    ],
+    "answer": "queue_depth (or queue_time_ms) logged per request, checked for the affected window — if it's elevated, requests are genuinely waiting longer to start (a queueing/capacity problem); if it's normal but inference_time_ms or generation_time_ms is elevated instead, the model itself is genuinely processing slower. This one field, logged per stage rather than only as an aggregate total, is what turns \"latency is bad\" into an actual diagnosis instead of a guess."
+  },
+  "security-001": {
+    "key_concepts": [
+      "instruction/data separation",
+      "output filtering",
+      "least privilege",
+      "defense in depth"
+    ],
+    "answer": "No single safeguard, several layered together: instruction/data separation so untrusted content the agent reads is treated as data, never as an instruction to follow; least-privilege tool scoping so even a successfully-tricked agent can't reach the confidential data through an overly broad tool; and output filtering as a last-resort net that catches a leak if the earlier layers had a gap. The point of naming all three, not just one, is that each catches a different failure — instruction/data separation reduces how often the trick works at all, tool scoping bounds what a successful trick can reach, and output filtering catches what slips through both."
+  },
+  "security-002": {
+    "key_concepts": [
+      "direct prompt injection",
+      "tool/action scoping",
+      "output constraints",
+      "no binding commitments from an unguarded LLM"
+    ],
+    "answer": "Tool/action scoping: the chatbot should never have had a tool or output pathway capable of producing a \"legally binding\" commitment at all — vehicle pricing and sale terms shouldn't be something a customer-facing LLM can state as fact or commitment, full stop, regardless of what it was tricked into saying. \"Be more careful with prompting\" doesn't fix this, because prompt-level instructions aren't a hard guarantee; the actual fix is removing the capability to make binding-sounding statements from what the model can output in the first place, the same least-privilege principle applied to output shape, not just tool calls."
+  },
+  "security-003": {
+    "key_concepts": [
+      "policy check independent of decision path",
+      "defense in depth",
+      "least privilege"
+    ],
+    "answer": "That the refund amount doesn't exceed the order's actual, ground-truth total — checked independently of however the agent decided to make the call, whether that decision came from a legitimate customer request or an injected directive buried in ticket content. This is the layer that catches the attack even if instruction/data separation has a gap, because it validates the *result* against reality rather than trusting the reasoning that produced it."
+  },
+  "security-004": {
+    "key_concepts": [
+      "mixed instruction/data channel",
+      "no structural separation in a prompt",
+      "output filtering as a backstop"
+    ],
+    "answer": "Because the instruction and the thing it's trying to protect live in the same channel, with nothing structurally separating \"things the model should treat as authoritative\" from \"things it should treat as content to discuss\": a strongly-worded system prompt instruction is competing with a cleverly-worded user request on equal footing, not overriding it from some privileged position the architecture doesn't actually provide. Output filtering (scanning responses for secret-shaped patterns before they're returned) is the backstop for exactly this gap. It's what catches a leak that got past the prompt-level instruction, not a replacement for the instruction being there at all."
+  },
+  "security-005": {
+    "key_concepts": [
+      "defense in depth",
+      "no single mitigation is sufficient",
+      "instruction-following is not a hard guarantee"
+    ],
+    "answer": "Acknowledge that a good system prompt is a real, useful layer: it's just not sufficient by itself, because there's no architectural guarantee that instructions in a prompt will always be followed, especially against a cleverly-crafted adversarial input specifically designed to work around exactly that kind of instruction. Frame it the way any other security-critical system is framed: nobody relies on a single lock on the front door for a bank vault either. Least-privilege tool scoping and output filtering exist specifically to catch what a prompt-level instruction alone can't guarantee, and having all of them together is what \"solved\" actually looks like here, not any one of them."
+  },
+  "security-006": {
+    "key_concepts": [
+      "least privilege",
+      "blast radius",
+      "tool scoping"
+    ],
+    "answer": "It doesn't make the injection itself less likely to succeed, but it dramatically changes what a successful injection can actually do — a narrow, task-specific tool (e.g. `issue_refund(order_id, amount)`) gives an attacker at most that one capability even if they fully control the agent's decision, while a general `run_db_command(sql)` tool gives them the same reach as direct database access, including reads/writes the agent was never meant to need. This is the least-privilege argument made concrete: scoping tools narrowly bounds the blast radius of a successful attack, even when the attack itself can't be fully prevented."
+  },
+  "security-007": {
+    "key_concepts": [
+      "direct vs. indirect prompt injection",
+      "untrusted retrieved content"
+    ],
+    "answer": "Direct injection is a user typing a malicious instruction straight into their own conversation with the agent: the untrusted content and \"the conversation\" are the same thing. Indirect injection is the malicious instruction arriving inside content the agent retrieves or processes on someone's behalf (a document, a ticket, a search result), content nobody flagged as untrusted because it wasn't typed by a user at all. It matters more once an agent has tools because indirect injection is what turns \"the agent said something wrong\" into \"the agent did something wrong.\" An agent reading untrusted content and then acting on a hidden instruction inside it is a fundamentally different risk than a chatbot that can only talk back."
+  },
+  "security-008": {
+    "key_concepts": [
+      "output filtering as a last-resort net, not the only layer",
+      "secrets shouldn't be reachable in context at all"
+    ],
+    "answer": "Output filtering only catches leaks that are shaped predictably enough to pattern-match (a specific secret format, a known string). It does nothing to stop a differently-worded or unanticipated leak, and it does nothing at all to prevent the underlying problem, which is that the secret was reachable by the model in the first place. The more durable fix is making sure secrets never enter the model's context at all (kept in code/config the agent's tools can use without the model itself ever seeing the raw value). Output filtering is a useful last-resort net for whatever that first layer misses, not a substitute for it."
+  },
+  "security-009": {
+    "key_concepts": [
+      "secrets don't belong in a prompt at all",
+      "code/config boundary vs. model context",
+      "instruction is not a guarantee"
+    ],
+    "answer": "Yes, it's still a problem: an instruction telling the model \"never reveal this\" lives in the exact same channel as the secret it's trying to protect, competing with whatever a user crafts to try to extract it, with no structural guarantee the instruction wins. The actual fix is keeping the key out of the model's context entirely: it belongs in code/config that the agent's tools can use directly when calling a real API, never in text the model reasons over. That way there's nothing for a successful injection to even extract, regardless of how the instruction not to reveal it is worded."
+  },
+  "tools-001": {
+    "key_concepts": [
+      "failure taxonomy",
+      "malformed vs. version-mismatch",
+      "schema validation"
+    ],
+    "answer": "Depends entirely on which of the four failure types this actually is, which is exactly why \"invalid data\" needs to be classified before deciding: if it's a one-off malformed response (a field with the wrong type, likely a transient upstream glitch), retry against a fresh call or an alternate source; if it's systematically missing/renamed fields (a version mismatch, the tool's schema itself changed shape), retrying the same call won't help, that needs escalation to a developer to update the integration; if the data is well-formed but doesn't match what was actually asked for (semantically wrong), neither retry nor switch is safe without a way to verify correctness: that's the case for asking the user or applying an independent verification check."
+  },
+  "tools-002": {
+    "key_concepts": [
+      "semantically wrong failure type",
+      "schema validates shape not truth"
+    ],
+    "answer": "Semantically wrong: the response is schema-valid (every field has the right type, nothing's missing) but the content doesn't answer what was actually asked. Schema validation checks shape, not truth: it can confirm a field called \"name\" contains a string, but it has no way to know whether that string is the *correct* entity's name versus some other entity's name entirely. Catching that requires a separate check comparing the response's content against what was actually requested, not a stricter schema."
+  },
+  "tools-003": {
+    "key_concepts": [
+      "version mismatch",
+      "continuous schema validation",
+      "ask-user/developer escalation"
+    ],
+    "answer": "Continuous schema validation on every response, not just at integration build time — if the tool's expected schema (e.g. via a Pydantic model or equivalent) had been validated against every live response rather than assumed correct once and never rechecked, the renamed field would have shown up immediately as a \"missing required field\" validation error the first time it happened, instead of silently breaking half the integration until a human noticed. That validation failure is also exactly the kind of signal that should escalate to a developer automatically (this chapter's \"ask-user\"/escalate response for version-mismatch failures), rather than only surfacing via a downstream user complaint."
+  },
+  "tools-004": {
+    "key_concepts": [
+      "retry doesn't fix malformed/semantic/version-mismatch failures",
+      "failure taxonomy"
+    ],
+    "answer": "Take the version-mismatch case specifically: if a third-party API renames a field, every retry of the same call hits the exact same schema validation failure every time, since the problem isn't transient at all. It's a permanent shape change that retrying can't route around. Worse, \"retry three times then give up silently\" burns three wasted round-trips and then produces silence instead of surfacing the actual signal (a developer needs to update the integration). A universal retry policy doesn't just fail to help here, it actively hides the failure from whoever could have fixed it."
+  },
+  "tools-005": {
+    "key_concepts": [
+      "transient failure",
+      "retry with backoff"
+    ],
+    "answer": "Transient — a one-off timeout followed immediately by success on an identical retry is the textbook signature of a transient failure (a momentary network blip or rate limit, not a real problem with the request or the tool itself). The appropriate response is exactly what happened: retry, ideally with backoff so a persistent version of the same problem doesn't just hammer the tool repeatedly at the same rate."
+  },
+  "tools-006": {
+    "key_concepts": [
+      "missing field vs. wrong-type field",
+      "version mismatch signature"
+    ],
+    "answer": "A field simply being absent (not present with a wrong type, just missing from the response entirely) is the signature of version mismatch, not malformed data — it suggests the upstream schema itself changed shape (a rename, a restructure), not that this one response happened to be corrupted. The general distinction: a wrong-*type* error on a field that's present points at malformed/corrupted data for that specific response; a *missing* field, especially if it's consistently missing across many calls rather than one-off, points at the schema itself having changed underneath the integration."
+  },
+  "tools-007": {
+    "key_concepts": [
+      "standardized client-server protocol",
+      "M×N vs. M+N integration problem"
+    ],
+    "answer": "The difference isn't the wire format, it's standardization of the *interface itself*: MCP defines a common way for any compliant client to discover and call any compliant server's tools without either side needing custom, bespoke glue code for that specific pairing, the same way HTTP lets any browser talk to any web server. That turns an M×N integration problem (M agent frameworks, each needing custom code for N tools) into roughly M+N (each side implements the protocol once). A REST API alone doesn't give you that, since every REST API still typically needs its own bespoke client integration written against its specific shape."
+  },
+  "tools-008": {
+    "key_concepts": [
+      "schema validation as an enforced contract",
+      "Pydantic-style validation"
+    ],
+    "answer": "Because \"documentation\" can drift from reality silently — a comment describing what a tool expects doesn't stop a caller from passing something that violates it, and doesn't stop the tool from returning something that violates its own documented shape either. An enforced contract (real runtime validation against a schema, e.g. via Pydantic) fails loudly and immediately the moment either side violates it, which is exactly the difference between catching a version-mismatch or malformed-data bug the moment it happens versus only discovering it once it's caused a downstream, harder-to-trace problem."
+  },
+  "tools-009": {
+    "key_concepts": [
+      "generic error handling masks distinct failure types",
+      "failure taxonomy needs distinct responses"
+    ],
+    "answer": "Because it treats every failure identically when they need genuinely different responses: a transient network blip, a permanently malformed response, data that's valid-but-wrong, and an upstream schema change are four different problems with four different fixes (retry, switch source, verify/ask, escalate to a developer), and collapsing all of them into \"log and move on\" means none of them actually get the right response. Worse, it hides version-mismatch and malformed-data bugs specifically, the ones that need a human to notice and fix something, behind a log line nobody's likely to go read until a user complains."
+  },
+  "design-001": {
+    "key_concepts": [
+      "failure cost before architecture",
+      "does this need an agent",
+      "success criteria"
+    ],
+    "answer": "First: what does \"simple\" actually mean here, concretely? What's the specific criterion that separates a ticket the agent should resolve automatically from one it shouldn't, since that boundary is the single riskiest design decision in the whole system. Second: what does a wrong automatic resolution cost? Closing a ticket that wasn't actually resolved is very different in severity from, say, issuing an incorrect refund, and that cost should drive how much safeguarding the system needs before anything else is decided. Third: what does success even look like, measurably, so there's a way to tell after launch whether the agent is actually helping or quietly making things worse. Proposing an architecture before these three are pinned down is the premature-jump mistake a system-design framework exists to prevent."
+  },
+  "design-002": {
+    "key_concepts": [
+      "when NOT to use an agent",
+      "does this need judgment under uncertainty"
+    ],
+    "answer": "What specific judgment call does this feature need to make that the existing deterministic logic can't already express? If the pipeline is reliably working and there's no genuine multi-step decision under uncertainty involved, adding an agent introduces nondeterminism, cost, and a new security surface for no offsetting benefit. If the answer reveals a real new requirement (inputs varied enough that hardcoded rules are becoming unmaintainable, or a step that now needs to weigh several plausible interpretations), that's what would actually justify it, but the question has to be asked and answered first, not skipped in favor of assuming the answer is yes."
+  },
+  "design-003": {
+    "key_concepts": [
+      "repeatable design framework value",
+      "premature architecture jump"
+    ],
+    "answer": "Push back gently but concretely: a repeatable framework isn't red tape, it's what prevents the specific failure of jumping straight to \"here's my architecture\" before establishing whether the architecture is even solving the right problem. Skipping it doesn't save time, it just moves the cost of skipped questions later, to a point where they're far more expensive to answer (after code is written, or after a launch reveals the framework would have caught something). What's lost concretely: a clear failure-cost assessment, an explicit check on whether the feature needs an agent at all, and a plan for how you'll know it's working, all things that are much cheaper to get right before writing code than after."
+  },
+  "design-004": {
+    "key_concepts": [
+      "failure cost asymmetry",
+      "security surface",
+      "operational/evaluation burden"
+    ],
+    "answer": "Failure cost and its asymmetry: two designs that tie on latency/cost/accuracy can still differ enormously in what a *wrong* outcome costs and how reversible it is, which is exactly the kind of thing pure performance metrics don't capture. Also worth checking: the security surface (does one design expose more untrusted content to more capable tools than the other), and the ongoing evaluation/operational burden (is one harder to monitor or debug in production). Ties on the metrics you already measured don't mean the designs are actually equivalent, just that you haven't yet measured what's different between them."
+  },
+  "design-005": {
+    "key_concepts": [
+      "defense in depth justified per-layer",
+      "each layer answers a distinct failure mode"
+    ],
+    "answer": "Name what each layer specifically catches that the others don't, rather than defending \"layering\" as a general virtue: instruction/data separation reduces how often an injected directive gets treated as authoritative in the first place; an independent policy check on the tool call catches a bad amount even if that first layer had a gap; least-privilege tool scoping bounds what damage is possible even if both of those failed. If any two layers were shown to catch the exact same failure with no distinction between them, that would be the actual argument to cut one — the test for \"is this overkill\" is whether each layer earns its place by catching something specific, not whether there are \"a lot\" of layers."
+  },
+  "design-006": {
+    "key_concepts": [
+      "scenario-specific reasoning vs. checklist recitation",
+      "willingness to cut an unjustified layer"
+    ],
+    "answer": "Ask them to justify cutting one of their proposed layers, or to explain what specific failure a particular technique catches that another one in their answer doesn't — someone reciting best practices will struggle to distinguish between the layers or say confidently which one matters least in this specific scenario, while someone with real judgment will have a concrete, scenario-grounded answer ready for exactly that, because they arrived at each choice for a specific reason rather than because it was on a checklist."
+  },
+  "design-007": {
+    "key_concepts": [
+      "failure cost drives architecture",
+      "human-in-the-loop for high-stakes irreversible actions"
+    ],
+    "answer": "For the high-stakes, hard-to-reverse case, bias heavily toward a human-in-the-loop gate before the action executes, tighter tool scoping, and more conservative automation thresholds: the cost of a false positive (the agent acting when it shouldn't have) is severe and can't be easily undone, so slowing the system down to add a checkpoint is worth the latency it costs. For the low-stakes, easily-recoverable case (a chat response a user can just ask to be corrected), full autonomy with lighter safeguards is a reasonable trade. The cost of being occasionally wrong is low enough that optimizing for speed and reducing friction matters more than adding a gate that would rarely change the outcome."
+  },
+  "design-008": {
+    "key_concepts": [
+      "evaluation plan before shipping",
+      "can't safely iterate without a way to measure success"
+    ],
+    "answer": "Without defined success metrics, there's no way to tell after shipping whether the system is actually working, regressing, or just producing output that looks plausible without anyone able to confirm it's good. \"We'll figure it out later\" usually means figuring it out from user complaints, which is a much slower, noisier, and more damaging feedback loop than having a real metric in place from day one. This isn't about blocking a launch on perfect measurement: it's that shipping with literally no way to detect a regression is qualitatively different from shipping with imperfect metrics, and the risk is specifically that problems go undetected, not just detected late."
+  },
+  "design-009": {
+    "key_concepts": [
+      "honest scope pushback",
+      "system design judgment over compliance"
+    ],
+    "answer": "Say so: the job isn't to deliver the requested artifact regardless of whether it's the right solution, it's to solve the actual underlying problem well, and an interviewer (or a real stakeholder) asking for \"an agent\" almost always actually wants the problem solved, not specifically an agent for its own sake. Flagging \"I think a simpler approach would work better here, and here's why\" demonstrates exactly the system-design judgment this chapter is about. Reflexively delivering what was asked for even when you can see a better answer is the opposite of the judgment an interviewer showing you this scenario is actually trying to assess."
+  },
+  "deploy-001": {
+    "key_concepts": [
+      "canary health metrics",
+      "offline vs. online divergence",
+      "drift detection"
+    ],
+    "answer": "Online signals that reflect actual user behavior rather than a benchmark's prediction of it: task completion/resolution rate, follow-up or clarification rate (a spike suggests the answer isn't actually landing even if it scores well offline), refusal rate (a subtle but real regression an offline benchmark might not weight heavily), and explicit feedback. In a deployment context specifically, this is exactly what canary-stage health checks should be monitoring in production traffic, not just what a one-time offline eval measured before shipping — the offline score improving doesn't guarantee the online signals move the same direction."
+  },
+  "deploy-002": {
+    "key_concepts": [
+      "canary threshold calibration",
+      "quiet regression",
+      "drift detection gap"
+    ],
+    "answer": "It tells you the canary health check's *threshold* was miscalibrated, not that having a canary stage was pointless — something passed every stage of the rollout without tripping any check, which means whatever threshold was in place was set too loosely to catch the actual magnitude of the regression that was happening. The fix isn't abandoning canary rollouts, it's recalibrating the threshold against what a real, meaningful regression's magnitude actually looks like, rather than picking a round number that sounds conservative without checking it against real data."
+  },
+  "deploy-003": {
+    "key_concepts": [
+      "threshold calibration against real regression magnitude",
+      "canary health check design"
+    ],
+    "answer": "The threshold is very likely set well above the magnitude of a real regression — a round, \"conservative-sounding\" number (e.g. flagging only a 50-point swing) can easily sail past a genuine, serious regression that's actually much smaller in magnitude (e.g. 30 points) but still very real and very much worth catching. The logic of \"compare canary to stable and flag a divergence\" is sound; the number it's compared against needs to be calibrated against what an actual regression looks like, not picked for how safe it sounds."
+  },
+  "deploy-004": {
+    "key_concepts": [
+      "automated checks are only as good as their calibration",
+      "postmortem on threshold, not just process"
+    ],
+    "answer": "Whether the automated check's actual threshold was calibrated against a real regression's typical magnitude, or just picked as a round, safe-sounding number without being tested against anything — \"the automated process said it was safe\" is only a complete explanation if the process's thresholds were actually validated to catch regressions of the size that shipped; if they weren't, the process didn't fail, its calibration did, and that's a fixable, specific finding rather than a vague \"the process let us down.\""
+  },
+  "deploy-005": {
+    "key_concepts": [
+      "shadow deployment measures offline only",
+      "real user behavior differs from offline comparison"
+    ],
+    "answer": "Shadow deployment compares offline, against whatever traffic sample and comparison metric you chose to evaluate against — it doesn't expose the new version to real user reactions (explicit feedback, follow-up behavior, actual satisfaction) at all, since by design nothing shadow-deployed is ever shown to a real user. Live canary monitoring is what actually measures real user response once the version is genuinely serving traffic; shadow deployment reduces risk by catching issues *before* that exposure, it doesn't substitute for measuring what happens once real exposure begins."
+  },
+  "deploy-006": {
+    "key_concepts": [
+      "upstream model drift",
+      "pinning model versions",
+      "continuous monitoring independent of your own deploys"
+    ],
+    "answer": "Since there's no corresponding change in your own version history to roll back to, the mitigation has to be independent of your own deploy process: pin to explicit model versions/snapshots where the provider offers them, rather than a stable \"latest\"-style alias, so a provider-side change requires an explicit opt-in on your side instead of arriving silently; and run drift-detection monitoring continuously against production traffic, not just during your own rollout events, since the \"change\" here can happen at any time with no deploy of yours to trigger a check."
+  },
+  "deploy-007": {
+    "key_concepts": [
+      "immutable prompt versioning",
+      "rollback requires real version history",
+      "in-place edits break rollback"
+    ],
+    "answer": "Rollback breaks because \"rolling back to version 3\" only works if version 3 is an immutable, unchanged historical record — an in-place edit means whatever key or label pointed at \"version 3\" now points at the edited text instead, so there's nothing distinct left to roll back *to*. The fix is treating every prompt change as a new version, never an edit to an existing one, so a `current_version` pointer can always be moved back to something that genuinely hasn't changed."
+  },
+  "deploy-008": {
+    "key_concepts": [
+      "immutable version history",
+      "audit trail",
+      "version pointer vs. mutable value"
+    ],
+    "answer": "Trust it if there's a real, immutable version history you can inspect — an actual record showing what \"version 3\" contains, when it was published, and that it hasn't been silently altered since. Don't trust a bare claim of \"version 3\" if the underlying system allows in-place edits under the same version label, since in that case the label is really just a mutable pointer with no guarantee the content it currently refers to is what was originally published under that name."
+  },
+  "deploy-009": {
+    "key_concepts": [
+      "risk-proportional rollout caution",
+      "quiet failure modes justify caution even for small changes"
+    ],
+    "answer": "Agree to skip it for changes with an obviously bounded, immediately-visible failure mode: a genuine typo fix where any problem would be instantly and unambiguously obvious, not a subtle behavior shift. Insist on the canary anyway for anything whose failure mode could plausibly be *quiet*: a wording change is exactly the kind of thing that can shift refusal rate, tone, or helpfulness in a way that looks like a normal, well-formed response and would only show up as a metric drift, not an error. And \"it's just a small wording change\" is not, by itself, evidence that its failure mode (if any) would be loud rather than quiet."
+  },
+  "struct-001": {
+    "key_concepts": [
+      "schema-constrained decoding",
+      "removing the failure mode vs. responding to it",
+      "retry only helps transient failures",
+      "validation is still required"
+    ],
+    "answer": "Schema-constrained decoding at the API level — JSON mode, `response_format`, or a grammar — so an invalid token cannot be generated at all. The reason it beats the alternatives is structural, not empirical: it removes the failure mode, where every alternative responds to it. A retry loop assumes the malformation is transient; when the same prompt, schema, and model produce the same broken shape every time, retrying reproduces it exactly and the budget just multiplies the bill. A repair pass (strip fences, find braces) fixes noise wrapped AROUND the JSON and can do nothing about broken syntax INSIDE it — an unquoted key survives every trim you can write. A larger model lowers the rate rather than guaranteeing anything, which is arguably worse, since a 0.5% malformation rate no longer reproduces in staging. Raising temperature is the opposite of a fix. The one caveat to state unprompted: the grammar guarantees syntax and schema, not correctness, so validation stays."
+  },
+  "struct-002": {
+    "key_concepts": [
+      "JSON mode / schema-constrained decoding",
+      "wrapper noise vs. syntax corruption",
+      "repair as a safety net, not the mechanism"
+    ],
+    "answer": "Use JSON mode or schema-constrained decoding at the API level. Fences and preamble are the model being conversational, and constraining the output format stops it at the source. The class the fix in question — a repair/trim pass — would NOT handle is corruption inside the JSON itself: an unquoted key (`{name: \"numpy\"}`), a trailing comma before the closing brace, a truncated object from hitting the output token limit. Those are the interesting failures precisely because no amount of stripping the outside makes the inside parse. That split is the whole argument: a repair pass is a reasonable safety net and a bad primary mechanism."
+  },
+  "struct-003": {
+    "key_concepts": [
+      "systematic vs. transient failure",
+      "retries need independent trials",
+      "content colliding with JSON encoding",
+      "truncation vs. malformation"
+    ],
+    "answer": "ACME's failures are systematic, not transient, and a retry loop can only fix the transient kind. For the other tenants, malformation is a sampling accident, so a fresh generation is a genuinely independent trial and the error rate falls geometrically with attempts. For ACME, something in their input makes the model produce the identical broken output every time. Likely causes, in rough order: content that collides with the JSON encoding (unescaped quotes or backslashes in a company name or file path), non-ASCII text shifting tokenization around the structural characters, a required field genuinely absent from their documents so the model improvises, or — importantly — inputs long enough to hit the output token limit, which truncates mid-object and is 100% reproducible. Check `finish_reason` before concluding anything about format; truncation is not a format problem and constrained decoding will not fix it either. Ship: constrained decoding for the format failures, a length/truncation check, and a rule that a retry only fires when the second attempt is actually an independent trial."
+  },
+  "struct-004": {
+    "key_concepts": [
+      "syntactic vs. semantic guarantees",
+      "hallucination under required fields",
+      "cross-field and business-rule validation"
+    ],
+    "answer": "The guarantee covers parse-ability and schema conformance: required fields present, types correct, no extra keys. That genuinely does replace the parser — the fence-stripping and try/except layer can go. It covers nothing about whether the content is right. Values can simply be wrong (a decoder that masks correctly but picks the wrong legal token returns perfect JSON with garbage in it). Values can be hallucinated, and constrained decoding makes this actively worse on absent fields: if `version` is required and non-nullable, the model has no legal way to say 'not in the document', so it must invent one — the constraint becomes a fabrication requirement. Cross-field consistency (start after end, a total that isn't the sum of line items) and business rules (an amount outside any plausible range, an ID referring to nothing) are entirely unchecked. So: constrained decoding is a syntactic and structural guarantee, validation is a semantic one, and only the JSON-repair code is genuinely redundant."
+  },
+  "struct-005": {
+    "key_concepts": [
+      "required non-nullable fields force fabrication",
+      "nullable as a representable 'absent'",
+      "three-outcome success condition",
+      "per-field null-rate monitoring"
+    ],
+    "answer": "The schema is causing it. Under a strict required-field schema with constrained decoding, a field that is genuinely not present in the document has no legal representation — the model cannot emit 'absent', so it must emit some string, and it emits a plausible one. The schema has converted a missing value into a fabricated one, silently, and 'success' counts it. Restructure it three ways. First, make genuinely-optional fields nullable, with null explicitly documented as the value to use when the document doesn't contain the field, so 'absent' becomes representable rather than forbidden. Second, replace the two-outcome success condition with three: `ok` (parsed, on-schema, all required fields populated), `incomplete` (parsed and on-schema but a required field is null — a document problem, routes to human review, retrying will not help), and `failed` (did not parse or conform — a pipeline problem, worth a retry and an alert). Collapsing `incomplete` into `failed` produces phantom retry storms; collapsing it into `ok` is what finance is seeing. Third, monitor the null rate per field rather than the aggregate success rate: a field that jumps from 30% null to 80% overnight signals an upstream change and is invisible in a metric that counts those records as successes."
+  },
+  "struct-006": {
+    "key_concepts": [
+      "the contract is the schema, not the parse",
+      "valid JSON with a missing field",
+      "separating document problems from pipeline problems"
+    ],
+    "answer": "Because `json.loads` succeeding says only that the bytes were well-formed — it says nothing about the contract being satisfied. The specific failure it misses: a model that cannot find a field in the source will often just leave it out and emit flawless JSON without it. A success condition built on 'did it parse' accepts that half-filled record and passes it downstream looking complete. Replace it with a check against the schema — parsed AND every required field present AND types correct — and then split failure into two kinds that need different responses: a document problem (parsed and on-schema, but a required value is genuinely absent from the source) routes to human review and must never be retried, while a pipeline problem (did not parse or did not conform) is worth a bounded retry and an alert if the rate moves. Those three outcomes are the minimum; two is what produces both phantom retry storms and silent data loss."
+  }
 }
