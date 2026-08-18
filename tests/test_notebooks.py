@@ -15,7 +15,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-NOTEBOOK_DIRS = ["curriculum", "interview_prep", "capstone"]
+NOTEBOOK_DIRS = ["curriculum", "interview_prep", "capstone", "solutions"]
 
 
 def _all_notebooks():
@@ -25,7 +25,7 @@ def _all_notebooks():
 
 def test_at_least_one_notebook_found():
     notebooks = list(_all_notebooks())
-    assert notebooks, "expected at least one .ipynb file under curriculum/, interview_prep/, or capstone/"
+    assert notebooks, f"expected at least one .ipynb file under {NOTEBOOK_DIRS}"
 
 
 def test_every_notebook_is_well_formed_json():

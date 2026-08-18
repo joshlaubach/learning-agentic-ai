@@ -21,13 +21,13 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-NOTEBOOK_DIRS = ["curriculum", "capstone"]
+NOTEBOOK_DIRS = ["curriculum", "capstone", "solutions"]
 GRADED_TAG = "graded"
 
 
 def _targets(argv):
     if argv:
-        return [Path(a) for a in argv]
+        return [Path(a).resolve() for a in argv]
     return [p for d in NOTEBOOK_DIRS for p in sorted((REPO_ROOT / d).glob("*.ipynb"))]
 
 
