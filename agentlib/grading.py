@@ -138,7 +138,10 @@ def check(task_id: str, fn=None):
 
     failures, n = [], len(spec["cases"])
     for i, case in enumerate(spec["cases"], 1):
-        probe = target if inspect.isclass(target) else _Probe(target)
+        # A class is passed through so isinstance/construction still work, and so is a
+        # non-callable -- ch06-write-a-payload grades a payload string, not a function.
+        wrappable = callable(target) and not inspect.isclass(target)
+        probe = _Probe(target) if wrappable else target
         detail = getattr(case, "__doc__", None)
         label = f"[{i}/{n}]" + (f" {detail.strip()}" if detail else "")
         try:
