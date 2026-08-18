@@ -8,6 +8,7 @@ wrote. It fails the moment you try to roll back to something you edited.
 from __future__ import annotations
 
 from agentlib.grading import task
+from agentlib.prose_checks import is_written_answer, matched, mentions
 
 _V1 = "You are a helpful support assistant. Answer the customer's question directly."
 _V2 = "You are a helpful support assistant. Answer directly and concisely."
@@ -332,3 +333,140 @@ task(
     _ref_health,
     [_h1, _h2, _h3, _h4, _h5, _h6, _h7, _h8],
 )
+
+
+# --- The two written diagnoses ---
+#
+# Same shape as Chapter 5's: the case that matters in each rejects the confident wrong
+# answer, which for both of these is a PROCESS answer to a STRUCTURAL problem. "Be more
+# careful during deploys" and "the rollout process is broken" are what a competent engineer
+# says when they have not yet looked at the thing that is actually wrong.
+
+_MIN_WORDS = 60
+
+
+def _needs(answer, family, what, hint, wrong=None, wrong_hint=""):
+    if mentions(answer, family):
+        return
+    if wrong is not None and mentions(answer, wrong):
+        raise AssertionError(
+            f"this settles on {', '.join(matched(answer, wrong))!r}, which is a process "
+            f"answer to a structural problem. {wrong_hint} {hint}"
+        )
+    raise AssertionError(f"the answer never names {what}. {hint}")
+
+
+# ch09-diagnose-mutable-prompt
+
+_MUT_CAUSE = ("mutable", "overwrit", "over-writ", "in place", "in-place", "no history",
+              "no version", "same key", "edited", "replaced", "no record", "lost the")
+_MUT_WRONG = ("be more careful", "more careful", "review process", "code review",
+              "training", "discipline", "double-check", "human error", "process")
+_MUT_FIX = ("immutable", "append-only", "append only", "never overwrite", "new version",
+            "pointer", "current_version", "current version", "version per publish",
+            "history")
+
+
+def _ref_mutable():
+    from solutions.reference.ch09 import DIAGNOSE_MUTABLE_PROMPT
+
+    return DIAGNOSE_MUTABLE_PROMPT
+
+
+def _m1(f):
+    """the answer is written out at length"""
+    is_written_answer(f, _MIN_WORDS)
+
+
+def _m2(f):
+    """it names why the rollback did nothing"""
+    _needs(f, _MUT_CAUSE, "the cause",
+           "The pointer moved and the text behind it did not, because the text had already "
+           "been overwritten.",
+           wrong=_MUT_WRONG,
+           wrong_hint="Care is not a control. A store that allows the edit will eventually "
+                      "have the edit made, by someone tired, at the wrong hour.")
+
+
+def _m3(f):
+    """it says how it would be confirmed"""
+    _needs(f, ("history", "record", "prior", "previous", "original", "audit", "check "),
+           "how you would confirm it",
+           "What would you look for in the store to prove the old text is gone?")
+
+
+def _m4(f):
+    """it proposes a structural fix"""
+    _needs(f, _MUT_FIX, "a fix",
+           "The fix is a data structure that makes the mistake impossible: immutable "
+           "versions and a pointer that is the only movable thing.")
+
+
+def _m5(f):
+    """it does not settle for a process fix"""
+    assert mentions(f, _MUT_FIX), (
+        "'be more careful' is the answer that leaves the system exactly as breakable as it "
+        "was. Name the structural change -- that is the difference between an incident "
+        "review that fixes something and one that produces a resolution."
+    )
+
+
+task("ch09-diagnose-mutable-prompt", _ref_mutable, [_m1, _m2, _m3, _m4, _m5])
+
+
+# ch09-diagnose-loose-threshold
+
+_THR_CAUSE = ("threshold", "0.5", "50 point", "50-point", "fifty", "too loose", "too large",
+              "too high", "uncalibrated", "not calibrated", "never checked", "round number")
+_THR_WRONG = ("rollout process", "the process", "should have rolled back",
+              "canary process", "more stages", "slower rollout", "manual review")
+_THR_FIX = ("calibrat", "0.05", "5 point", "5-point", "five point", "tighter", "smaller",
+            "against what", "observed", "real regression", "magnitude")
+_THR_NOISE = ("noise", "sampling", "false", "fire on every", "cry wolf", "too tight",
+              "flaky", "variance")
+
+
+def _ref_threshold():
+    from solutions.reference.ch09 import DIAGNOSE_LOOSE_THRESHOLD
+
+    return DIAGNOSE_LOOSE_THRESHOLD
+
+
+def _t1(f):
+    """the answer is written out at length"""
+    is_written_answer(f, _MIN_WORDS)
+
+
+def _t2(f):
+    """it identifies the threshold itself as the bug"""
+    _needs(f, _THR_CAUSE, "the threshold",
+           "The question asked what is wrong with the FUNCTION, not with the rollout.",
+           wrong=_THR_WRONG,
+           wrong_hint="The rollout did exactly what it was told to do. It was told the "
+                      "canary was healthy.")
+
+
+def _t3(f):
+    """it relates the threshold to the size of the actual regression"""
+    _needs(f, ("32", "thirty", "regression", "swing", "magnitude", "point"),
+           "the size of the regression it missed",
+           "A threshold is only wrong relative to something. Say what the real regression "
+           "measured and why the threshold could not see it.")
+
+
+def _t4(f):
+    """it proposes a calibrated replacement"""
+    _needs(f, _THR_FIX, "a fix",
+           "Calibrate the threshold against what a real regression actually looks like "
+           "rather than against a round number.")
+
+
+def _t5(f):
+    """it recognises that a threshold can also be too tight"""
+    _needs(f, _THR_NOISE, "the other failure direction",
+           "A threshold set at zero catches every regression and fires on every rollout, "
+           "because two finite samples never agree exactly. A rollback signal that cries "
+           "wolf gets muted, which leaves you with no signal at all.")
+
+
+task("ch09-diagnose-loose-threshold", _ref_threshold, [_t1, _t2, _t3, _t4, _t5])

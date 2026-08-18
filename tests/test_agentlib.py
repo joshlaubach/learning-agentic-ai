@@ -6,6 +6,9 @@ tools, loop_guards, synthetic_data, and eval_metrics in Unit 4. This file also a
 determinism given a fixed seed wherever a module generates data.
 """
 
+import json
+from pathlib import Path
+
 import pytest
 
 import agentlib
@@ -309,3 +312,51 @@ def test_injection_lab_reference_payload_bypasses_layer_one_and_is_stopped_by_la
         decision["args"]["order_id"], decision["args"]["amount"], ORDERS
     )
     assert allowed is False, "layer 2 must still refuse the refund"
+
+
+# --- interview_prep/question_bank.json and its answer key ---
+#
+# key_concepts moved out of the question bank and into solutions/question_bank_answers.json:
+# browsing the questions should not hand you the answer skeleton for all 93 of them. These
+# tests keep the two files in sync and keep the answers out of the question file, which
+# CONTRIBUTING.md now tells contributors to rely on.
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+QUESTION_BANK = REPO_ROOT / "interview_prep" / "question_bank.json"
+ANSWER_KEY = REPO_ROOT / "solutions" / "question_bank_answers.json"
+
+
+def _bank():
+    return json.loads(QUESTION_BANK.read_text())
+
+
+def _answers():
+    return json.loads(ANSWER_KEY.read_text())
+
+
+def test_question_bank_carries_no_answers():
+    for question in _bank():
+        assert "key_concepts" not in question, (
+            f"{question['id']} still ships key_concepts in the question bank; it belongs in "
+            "solutions/question_bank_answers.json"
+        )
+
+
+def test_every_question_has_an_answer_entry():
+    answers = _answers()
+    orphans = [q["id"] for q in _bank() if q["id"] not in answers]
+    assert not orphans, f"questions with no answer entry: {orphans}"
+
+
+def test_every_answer_entry_has_a_question():
+    ids = {q["id"] for q in _bank()}
+    orphans = [qid for qid in _answers() if qid not in ids]
+    assert not orphans, f"answer entries with no question: {orphans}"
+
+
+def test_every_answer_entry_has_both_halves():
+    for qid, entry in _answers().items():
+        assert isinstance(entry, dict), f"{qid}: expected {{key_concepts, answer}}, got {type(entry).__name__}"
+        assert entry.get("answer", "").strip(), f"{qid}: empty answer"
+        concepts = entry.get("key_concepts")
+        assert isinstance(concepts, list) and concepts, f"{qid}: key_concepts must be a non-empty list"

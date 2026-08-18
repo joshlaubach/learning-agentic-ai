@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from agentlib import llm_client
 from agentlib.grading import task
+from agentlib.prose_checks import is_written_answer, matched, mentions
 
 _STAGES = ["queue_time_ms", "network_time_ms", "inference_time_ms", "generation_time_ms"]
 
@@ -323,3 +324,204 @@ task(
     _ref_router,
     [_u1, _u2, _u3, _u4, _u5, _u6, _u7, _u8, _u9, _u10],
 )
+
+
+# --- The three written diagnoses ---
+#
+# Graded on whether the answer names the cause, rules out the plausible-but-wrong cause, and
+# proposes a fix that follows from the diagnosis. Not on wording: each concept is a family of
+# markers wide enough that someone who understood it is not failed for vocabulary.
+#
+# The case that carries the weight in each of these is the one that rejects a CONFIDENT WRONG
+# ANSWER -- the diagnosis a competent engineer actually reaches for first and that the data
+# does not support. An empty answer failing proves nothing.
+
+_MIN_WORDS = 60
+
+
+def _needs(answer, family, what, hint, wrong=None, wrong_hint=""):
+    """Assert the answer names `family`, with a tailored message when it named `wrong`."""
+    if mentions(answer, family):
+        return
+    if wrong is not None and mentions(answer, wrong):
+        raise AssertionError(
+            f"this settles on {', '.join(matched(answer, wrong))!r}, which is the answer the "
+            f"data does not support. {wrong_hint} {hint}"
+        )
+    raise AssertionError(f"the answer never names {what}. {hint}")
+
+
+# ch05-diagnose-duplicate-calls
+
+_DUP_CAUSE = ("duplicate", "twice", "double-submit", "double submit", "resubmit",
+              "re-submit", "replay", "repeated request", "same request", "idempot",
+              "retry", "fired twice", "sent twice")
+_DUP_WRONG = ("harder question", "more complex", "complexity", "longer prompt",
+              "bigger prompt", "users asked", "harder batch", "difficult question")
+_DUP_FIX = ("idempot", "request id", "request_id", "dedup", "de-dup", "before execution",
+            "check before", "unique id", "already processed")
+_DUP_EVIDENCE = ("token", "double", "2x", "twice", "step change", "no change in")
+
+
+def _ref_dup():
+    from solutions.reference.ch05 import DIAGNOSE_DUPLICATE_CALLS
+
+    return DIAGNOSE_DUPLICATE_CALLS
+
+
+def _dd1(f):
+    """the answer is written out at length"""
+    is_written_answer(f, _MIN_WORDS)
+
+
+def _dd2(f):
+    """it names what in the log points at the cause"""
+    _needs(f, _DUP_EVIDENCE, "the evidence in the log",
+           "Say what you actually looked at -- the token counts against their neighbours.")
+
+
+def _dd3(f):
+    """it names the cause the data supports"""
+    _needs(f, _DUP_CAUSE, "the cause",
+           "Token volume stepped up with no matching change in what was asked. The same work "
+           "is being done more than once.",
+           wrong=_DUP_WRONG,
+           wrong_hint="If the questions had genuinely got harder, the token counts would "
+                      "track query complexity -- and here they do not.")
+
+
+def _dd4(f):
+    """it proposes a fix that follows from the cause"""
+    _needs(f, _DUP_FIX, "a fix",
+           "A duplicate call has to be recognised and dropped, which means identifying the "
+           "request before executing it rather than after.")
+
+
+def _dd5(f):
+    """it rules out the plausible-but-wrong explanation rather than ignoring it"""
+    assert mentions(f, _DUP_CAUSE), (
+        "a diagnosis is a choice between hypotheses. Name the one the data supports; saying "
+        "what it is NOT is what makes the answer convincing in an interview."
+    )
+
+
+task("ch05-diagnose-duplicate-calls", _ref_dup, [_dd1, _dd2, _dd3, _dd4, _dd5])
+
+
+# ch05-diagnose-context-growth
+
+_CTX_CAUSE = ("history", "context", "accumulat", "grow", "linear", "re-sent", "resent",
+              "every turn", "each turn", "never truncat", "unbounded", "full conversation",
+              "prior turn", "previous turn")
+_CTX_WRONG = ("cheaper model", "switch model", "smaller model", "different model",
+              "downgrade", "model routing")
+_CTX_FIX = ("window", "truncat", "summar", "bounded", "cap", "trim", "sliding", "prune",
+            "drop older", "limit the")
+_CTX_RISK = ("context window", "context limit", "exceed", "overflow", "expensive", "cost",
+             "grows", "compound")
+
+
+def _ref_ctx():
+    from solutions.reference.ch05 import DIAGNOSE_CONTEXT_GROWTH
+
+    return DIAGNOSE_CONTEXT_GROWTH
+
+
+def _cg1(f):
+    """the answer is written out at length"""
+    is_written_answer(f, _MIN_WORDS)
+
+
+def _cg2(f):
+    """it names the shape of the growth"""
+    _needs(f, ("linear", "steadi", "climb", "grow", "rising", "increas", "monoton"),
+           "the shape of the curve",
+           "It is the SHAPE that identifies this one -- steady linear growth, not the "
+           "log-normal spread a healthy mix of requests produces.")
+
+
+def _cg3(f):
+    """it names the cause"""
+    _needs(f, _CTX_CAUSE, "the cause",
+           "Something is being re-sent every turn and never removed.",
+           wrong=_CTX_WRONG,
+           wrong_hint="Moving to a cheaper model makes an unbounded context cheaper per "
+                      "token and still unbounded -- it postpones the wall instead of "
+                      "removing it.")
+
+
+def _cg4(f):
+    """it names what this eventually breaks, not just what it costs"""
+    _needs(f, _CTX_RISK, "the consequence",
+           "This is a cost problem right up until it is an outage -- unbounded growth "
+           "eventually exceeds the context window itself.")
+
+
+def _cg5(f):
+    """it proposes a bounded-context fix"""
+    _needs(f, _CTX_FIX, "a fix",
+           "The history has to be bounded somehow: a window over recent turns, "
+           "summarization of older ones, or both.")
+
+
+task("ch05-diagnose-context-growth", _ref_ctx, [_cg1, _cg2, _cg3, _cg4, _cg5])
+
+
+# ch05-diagnose-queueing
+
+_Q_CAUSE = ("queue", "queuing", "queueing", "backpressure", "back-pressure", "waiting",
+            "backlog", "admission")
+_Q_WRONG = ("inference got slower", "inference is slower", "huge prompt", "bigger prompt",
+            "larger prompt", "prompt got", "more tokens", "model got slower",
+            "add more gpu", "add gpus", "buy more gpu")
+_Q_RULED_OUT = ("token", "ordinary", "normal", "unchanged", "did not change", "didn't change",
+                "flat", "same as")
+_Q_FIX = ("capacity", "backpressure", "back-pressure", "admission", "scale", "concurrency",
+          "shed", "rate limit", "which stage", "throughput")
+
+
+def _ref_queue():
+    from solutions.reference.ch05 import DIAGNOSE_QUEUEING
+
+    return DIAGNOSE_QUEUEING
+
+
+def _q1(f):
+    """the answer is written out at length"""
+    is_written_answer(f, _MIN_WORDS)
+
+
+def _q2(f):
+    """it names queueing as the stage that moved"""
+    _needs(f, _Q_CAUSE, "the stage that actually grew",
+           "Four stages were profiled. Name the one whose share of total latency changed.",
+           wrong=_Q_WRONG,
+           wrong_hint="'Inference got slower' and 'someone sent a huge prompt' are the two "
+                      "reflex answers to a latency jump, and the per-request token counts "
+                      "here rule out both -- the work per request did not change at all.")
+
+
+def _q3(f):
+    """it says what the token counts ruled out"""
+    _needs(f, _Q_RULED_OUT, "what the token counts told you",
+           "The token counts are the evidence that this is not a per-request-work problem. "
+           "Saying what they ruled out is most of the diagnosis.")
+
+
+def _q4(f):
+    """it proposes a fix aimed at the queue"""
+    _needs(f, _Q_FIX, "a fix",
+           "A queueing problem is solved with capacity and backpressure, not with anything "
+           "that makes an individual request faster.")
+
+
+def _q5(f):
+    """it does not stop at the reflex answer"""
+    assert mentions(f, _Q_CAUSE), (
+        "'add more GPUs' is only accidentally right here -- it helps insofar as it adds "
+        "queue capacity, and not at all because inference got slower. An answer that stops "
+        "there has pattern-matched on the symptom instead of reading the stage breakdown."
+    )
+
+
+task("ch05-diagnose-queueing", _ref_queue, [_q1, _q2, _q3, _q4, _q5])
