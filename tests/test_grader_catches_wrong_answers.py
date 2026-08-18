@@ -128,5 +128,217 @@ def test_ch03_mrr_rejects_zero_based_ranks():
     _rejects("ch03-mrr", wrong)
 
 
+# --- Chapter 1 ---
+
+
+def test_ch01_react_loop_rejects_never_appending_the_observation():
+    """Plausible wrong answer: run the tool, print the result, and loop -- but never put the
+    observation back into messages. Looks complete, and the first step even works; the brain
+    is simply blind to every result and repeats itself until the budget runs out."""
+
+    def wrong(task, brain, tools, max_iterations=6, verbose=True):
+        messages = [{"role": "user", "content": task}]
+        for _ in range(max_iterations):
+            decision = brain(messages)
+            if decision.get("action") == "final_answer":
+                return decision.get("action_input")
+            tool_fn = tools.get(decision.get("action"))
+            if tool_fn is None:
+                return f"Agent produced an unrecognized action: {decision.get('action')!r}"
+            tool_fn(decision.get("action_input"))  # result computed, then dropped
+        return "Agent did not reach a final answer within the iteration budget."
+
+    _rejects("ch01-react-loop", wrong)
+    _accepts("ch01-react-loop")
+
+
+def test_ch01_react_loop_rejects_unbounded_loop():
+    """Plausible wrong answer: a while-True loop with the iteration cap forgotten. Passes
+    every happy-path case and hangs forever on the runaway agent this chapter is about."""
+
+    def wrong(task, brain, tools, max_iterations=6, verbose=True):
+        messages = [{"role": "user", "content": task}]
+        steps = 0
+        while steps < 1000:  # bounded only so this test terminates
+            steps += 1
+            decision = brain(messages)
+            if decision.get("action") == "final_answer":
+                return decision.get("action_input")
+            tool_fn = tools.get(decision.get("action"))
+            if tool_fn is None:
+                return f"Agent produced an unrecognized action: {decision.get('action')!r}"
+            result = tool_fn(decision.get("action_input"))
+            messages.append({"role": "observation", "tool": decision.get("action"), "content": result})
+        return "Agent did not reach a final answer within the iteration budget."
+
+    _rejects("ch01-react-loop", wrong)
+
+
+def test_ch01_dup_guard_rejects_seen_anywhere_instead_of_consecutive():
+    """Plausible wrong answer: remember every observation in a set and escalate on any
+    repeat. Catches the actual stuck loop correctly, which is what makes it convincing --
+    and also kills an agent that legitimately revisits a state after real work."""
+
+    def wrong(task, brain, tools, max_iterations=50, verbose=True):
+        import json as _json
+
+        messages = [{"role": "user", "content": task}]
+        seen = set()
+        for step in range(1, max_iterations + 1):
+            decision = brain(messages)
+            action = decision.get("action")
+            if action == "final_answer":
+                return decision.get("action_input")
+            tool_fn = tools.get(action)
+            if tool_fn is None:
+                return f"Agent produced an unrecognized action: {action!r}"
+            result = tool_fn(decision.get("action_input"))
+            observation_hash = hash(_json.dumps(result, sort_keys=True))
+            if observation_hash in seen:
+                return f"Escalating after step {step}: this observation has been seen before."
+            seen.add(observation_hash)
+            messages.append({"role": "observation", "tool": action, "content": result})
+        return "Agent did not reach a final answer within the iteration budget."
+
+    _rejects("ch01-dup-guard", wrong)
+    _accepts("ch01-dup-guard")
+
+
+def test_ch01_memory_rejects_recording_only_the_assistant_turn():
+    """Plausible wrong answer: append the reply to history and nothing else. The history
+    grows every turn, so it looks like memory is working -- but everything the USER said is
+    thrown away, which is the half of the conversation that carries the facts."""
+
+    def wrong(history, user_input, brain):
+        reply = brain(history, user_input)
+        history.append({"role": "assistant", "content": reply})
+        return reply
+
+    _rejects("ch01-memory", wrong)
+    _accepts("ch01-memory")
+
+
+def test_ch01_memory_rejects_appending_the_user_turn_before_the_brain_runs():
+    """Plausible wrong answer: record the user turn first, then call the brain. Reads more
+    naturally, and quietly changes the brain's contract -- it now sees the current input
+    twice, once in history and once as the argument."""
+
+    def wrong(history, user_input, brain):
+        history.append({"role": "user", "content": user_input})
+        reply = brain(history, user_input)
+        history.append({"role": "assistant", "content": reply})
+        return reply
+
+    _rejects("ch01-memory", wrong)
+
+
+# --- Chapter 2 ---
+
+
+def test_ch02_planner_rejects_returning_a_string():
+    """Plausible wrong answer: return the joined subtasks as one string. Prints beautifully,
+    and Bob's dispatch loop then iterates over its characters."""
+
+    def wrong(task):
+        lowered = task.lower()
+        if "anthropic" in lowered and "react" in lowered:
+            return "who founded anthropic?, what is the react pattern?"
+        return task
+
+    _rejects("ch02-planner", wrong)
+    _accepts("ch02-planner")
+
+
+def test_ch02_planner_rejects_empty_plan_for_atomic_tasks():
+    """Plausible wrong answer: only return subtasks when the task actually decomposes, and
+    an empty list otherwise. Bob then dispatches nothing and assembles an empty draft --
+    a silent failure rather than a loud one."""
+
+    def wrong(task):
+        lowered = task.lower()
+        if "anthropic" in lowered and "react" in lowered:
+            return ["who founded anthropic?", "what is the react pattern?"]
+        return []
+
+    _rejects("ch02-planner", wrong)
+
+
+def test_ch02_subagent_rejects_threading_parent_messages_in():
+    """Plausible wrong answer: accept the parent's messages and start from them "so the
+    subagent has context". Every result is correct; the isolation the subagent exists to
+    provide is gone, and the parent's tokens are now paid for twice."""
+    parent_messages = [
+        {"role": "user", "content": "the parent's whole conversation"},
+        {"role": "assistant", "content": "lots of prior context"},
+    ]
+
+    def wrong(subtask, brain, tools, max_iterations=4, leaky=False, verbose=False):
+        import json as _json
+
+        messages = parent_messages + [{"role": "user", "content": subtask}]
+        for step in range(1, max_iterations + 1):
+            decision = brain(messages)
+            if decision["action"] == "final_answer":
+                if leaky:
+                    return _json.dumps(
+                        messages + [{"role": "assistant", "content": decision["action_input"]}]
+                    ), step
+                return decision["action_input"], step
+            tool_fn = tools.get(decision["action"])
+            result = tool_fn(decision["action_input"]) if tool_fn else {"status": "error", "error": "unknown tool"}
+            messages.append({"role": "observation", "tool": decision["action"], "content": result})
+        return "Subagent did not finish within its iteration budget.", max_iterations
+
+    _rejects("ch02-subagent", wrong)
+    _accepts("ch02-subagent")
+
+
+def test_ch02_subagent_rejects_a_module_level_message_list():
+    """Plausible wrong answer: hoist `messages` out of the function so it can be inspected
+    afterwards. One subagent works perfectly; the second inherits everything the first did."""
+    shared_messages = []
+
+    def wrong(subtask, brain, tools, max_iterations=4, leaky=False, verbose=False):
+        import json as _json
+
+        shared_messages.append({"role": "user", "content": subtask})
+        for step in range(1, max_iterations + 1):
+            decision = brain(shared_messages)
+            if decision["action"] == "final_answer":
+                if leaky:
+                    return _json.dumps(
+                        shared_messages + [{"role": "assistant", "content": decision["action_input"]}]
+                    ), step
+                return decision["action_input"], step
+            tool_fn = tools.get(decision["action"])
+            result = tool_fn(decision["action_input"]) if tool_fn else {"status": "error", "error": "unknown tool"}
+            shared_messages.append({"role": "observation", "tool": decision["action"], "content": result})
+        return "Subagent did not finish within its iteration budget.", max_iterations
+
+    _rejects("ch02-subagent", wrong)
+
+
+def test_ch02_leak_check_rejects_a_length_threshold():
+    """Plausible wrong answer: call anything over 30 words a leak. Correct on the two
+    examples the notebook happens to show, and wrong in both directions -- it truncates a
+    long legitimate answer and waves through a short transcript."""
+
+    def wrong(raw_result):
+        return len(raw_result.split()) > 30
+
+    _rejects("ch02-leak-check", wrong)
+    _accepts("ch02-leak-check")
+
+
+def test_ch02_leak_check_rejects_substring_sniffing():
+    """Plausible wrong answer: look for the words a transcript contains instead of parsing
+    it. Flags any prose that happens to use the word "role"."""
+
+    def wrong(raw_result):
+        return "role" in raw_result and "content" in raw_result
+
+    _rejects("ch02-leak-check", wrong)
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
