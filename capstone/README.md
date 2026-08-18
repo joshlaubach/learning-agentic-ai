@@ -1,70 +1,117 @@
-# Capstone: Ava, a Combined Agent Project
+# Capstone: Ava — a specification
 
-A portfolio piece, not a 10th chapter. `capstone_agent.ipynb` is one built, working agent,
-not another concept→build→break-it→interview-drill notebook like the numbered chapters.
-Its purpose is to demonstrate that the individual techniques Chapters 1-9 taught in isolation
-actually compose into a single real system, using an actual agent framework instead of the
-from-scratch loops the early chapters built by hand.
+This is a specification, not a walkthrough. Chapters 1-9 taught the pieces; this is where you
+put them together yourself, against a written contract, with a test suite that decides whether
+you met it.
 
-## What it does
+Nothing here is new material. The retriever is Chapter 3's. The MCP call is Chapter 7's. The
+sanitizer is Chapter 6's idea. The loop shape is Chapter 1's. What is new is that they have to
+compose into one agent that satisfies five requirements simultaneously — and that satisfying
+four of them is a fail.
 
-Ava is a small research/support assistant with two tools and a memory of the conversation:
+## What you build
 
-- Retrieval over Chapter 3's real SQuAD-based corpus, via the exact same `TfidfRetriever`
-  class Chapter 3 built: reused, not re-implemented.
-- Tool use against Chapter 7's real, schema-validated MCP server
-  (`curriculum/_ch07_mcp_server.py`): a genuine stdio connection to that same server, calling
-  its real `get_package_info` tool and validating the response with the same Pydantic
-  `PackageInfo` model Chapter 7 used.
-- Memory across turns, via LangGraph's checkpointer, proven concretely in the notebook (not
-  just asserted): a second turn in the same conversation thread answers a question that is
-  only answerable from real accumulated state, using nothing but the new message plus
-  whatever the checkpointer already holds.
-- A safeguard from Chapter 6: retrieved content is treated as untrusted data and sanitized
-  (the same instruction/data-separation mechanism Chapter 6's ticket-triage agent used)
-  before it re-enters the conversation. The notebook proves this is wired into the actual
-  code path the graph executes, not just callable in isolation, by running a deliberately
-  poisoned document through the real `tool_node` function and showing the injected directive
-  never reaches the conversation.
+`capstone/ava.py`. It is stubbed; every `raise NotImplementedError` in it is yours.
 
-## What it demonstrates
+A LangGraph agent, Ava, with two tools and memory across turns:
 
-That the techniques from Chapters 1-9 aren't isolated exercises: retrieval evaluation
-(Ch3), tool integration and schema validation (Ch7), and security safeguards (Ch6) all
-compose cleanly into one agent, orchestrated by a real framework (LangGraph) instead of a
-hand-rolled loop, with the same reliability discipline (a real-vs-mock toggle, so it runs
-with or without an API key) used everywhere else in this course.
+| Piece | Comes from | You write |
+| --- | --- | --- |
+| `search_knowledge_base` | Chapter 3's TF-IDF retriever over the real SQuAD corpus | given |
+| `lookup_package_info` | Chapter 7's real MCP server, over real stdio | given |
+| `sanitize_retrieved_text` | Chapter 6's instruction/data separation | **yes** |
+| `decide` | Chapter 1's brain interface, real/mock split | **yes** |
+| `agent_node`, `tool_node`, `route_after_agent` | the graph's three moving parts | **yes** |
+| `build_ava` | wiring and the checkpointer | **yes** |
 
-## How to run it
+The reference implementation lives in `solutions/reference/capstone.py`, and a fully worked
+notebook in `solutions/capstone_reference.ipynb`. Read them after you have your own version
+passing, not before.
 
-Nothing to set up twice. Ava reuses the exact account/key/spend-limit setup from Chapter 1:
+## The contract
 
-- With a real API key (see `.env.example`): set `LLM_PROVIDER` to `anthropic` or `openai` and
-  the matching API key. Ava runs on the stronger-tier model
-  (`agentlib.llm_client.STRONG_MODELS`), since this is the capstone quality bar, not the
-  cost-optimized default tier Chapters 5's model-routing section discusses.
-- With no key present: everything still runs, deterministically, end-to-end, through the same
-  `HAS_KEY` mock-fallback path used in every other chapter. This is how CI verifies this
-  notebook, and how anyone without an API key set up yet can still see the whole thing work.
+Five requirements. `capstone/test_capstone.py` checks each one, and each one is a real
+property of the system rather than a shape your code happens to have.
 
-Either way: `jupyter nbconvert --to notebook --execute capstone/capstone_agent.ipynb`, or
-open it in Jupyter and run all cells.
+### 1. Answers cite their sources
+
+Every answer that came from retrieval must carry the `doc_id` of the document it came from,
+and that `doc_id` must be one that actually exists in the corpus.
+
+This is the requirement that makes a wrong answer diagnosable. Without it, a hallucination and
+a retrieval failure look identical from the outside, and Chapter 3's whole point was that they
+are different bugs with different fixes.
+
+### 2. A failing tool is handled, not fatal
+
+At least one tool call must survive the tool raising. When a tool fails, the agent reports
+that into the conversation and answers from what it has; it does not propagate the exception
+out of the graph.
+
+A dependency being down is an ordinary Tuesday, not an exceptional condition. Chapter 4 spent
+a chapter on this.
+
+### 3. A fact survives across two turns of one session
+
+Ask something, then in the same `thread_id` ask a follow-up that is only answerable from the
+first turn. The answer has to be right, and it has to come from the checkpointer rather than
+from you re-sending a transcript.
+
+### 4. An injected directive is neutralized
+
+Put a document carrying an embedded directive through the real retrieval path — the actual
+`tool_node` the graph executes, not the sanitizer called in isolation — and the directive must
+not reach the conversation.
+
+Chapter 6's lesson applies verbatim: retrieved content is untrusted input. The corpus is not
+"yours" in any sense that matters; it is text from somewhere else that your agent reads on a
+user's behalf.
+
+### 5. At most 20 model calls on the 5-question eval set
+
+`EVAL_QUESTIONS` holds five questions. Answering all five must cost 20 model calls or fewer.
+
+The budget is deliberately loose — the reference uses about half of it. It exists to catch the
+loop that never terminates, which is the failure Chapter 1 opened with and the one that shows
+up on a bill rather than in a stack trace.
+
+## Running the tests
+
+```
+pytest capstone/test_capstone.py
+```
+
+No API key needed, and none is used. Everything runs through the same deterministic mock path
+that CI uses. If you have a key configured, `decide` routes to the real model instead and the
+same five requirements still apply — but the tests are written to pass without one, on
+purpose, because a test suite that costs money to run is a test suite nobody runs.
+
+`GRADER_MODE=reference pytest capstone/test_capstone.py` grades
+`solutions/reference/capstone.py` instead of your version, which is how CI proves the contract
+is satisfiable.
+
+## Where to start
+
+1. Read `capstone/ava.py` top to bottom before writing anything. The tools and the state shape
+   are given; the gaps are marked.
+2. Get `build_ava` compiling and one question answered end to end. Requirement 5 will pass
+   trivially and the rest will fail.
+3. Take the other four in any order. They are independent.
+4. `pytest capstone/test_capstone.py -x` until it is green, then compare against the reference.
 
 ## How this compares to a real system
 
-[OpenClaw](https://docs.openclaw.ai/) is a real production agent system that combines the
-same pieces this capstone does at real scale: retrieval/context assembly, tool use, and
-persistent memory across sessions (its own documented architecture describes a
-context-assembly stage and a "persist memory" stage as part of its core agentic loop; see
-`REFERENCES.md`'s Chapter 2 entry). It also documents, in its own security guidance, the
-exact class of risk Chapter 6 and this capstone's safeguard address: untrusted external
-content reaching a model's context without being treated as data rather than instructions.
-OpenClaw's own docs recommend the same layered mitigation (treat external content as data,
-scope tool access narrowly, gate sensitive actions) this course's Chapter 6 and this
-capstone both implement.
+[OpenClaw](https://docs.openclaw.ai/) is a real production agent system that combines the same
+pieces at real scale: retrieval/context assembly, tool use, and persistent memory across
+sessions (its own documented architecture describes a context-assembly stage and a "persist
+memory" stage as part of its core agentic loop; see `REFERENCES.md`'s Chapter 2 entry). It also
+documents, in its own security guidance, the exact class of risk requirement 4 addresses:
+untrusted external content reaching a model's context without being treated as data rather
+than instructions. OpenClaw's own docs recommend the same layered mitigation (treat external
+content as data, scope tool access narrowly, gate sensitive actions) this course's Chapter 6
+and this capstone both implement.
 
-Ava is a small, deliberately simplified version of the same shape of system. The point isn't
-that Ava is production-grade. It isn't; it's a single-agent teaching project with two tools.
-The point is that the underlying architecture (retrieval, tool use, memory, and the security
-discipline that has to accompany all three once real users and real tools are involved) is
-the same architecture real agent systems run in production.
+Ava is a deliberately simplified version of the same shape of system. The point is not that
+Ava is production-grade — it is a single-agent teaching project with two tools. The point is
+that the underlying architecture, and the five properties above that it has to hold onto, are
+the same ones a real agent system is judged on.

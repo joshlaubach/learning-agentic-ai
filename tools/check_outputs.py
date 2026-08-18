@@ -22,6 +22,8 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+# solutions/ is deliberately absent: nothing there is tagged `graded` (it IS the answer
+# key), so committed output is exactly what those notebooks are for.
 CHECKED_DIRS = ["curriculum", "capstone"]
 GRADED_TAG = "graded"
 
