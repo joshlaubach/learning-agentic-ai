@@ -254,3 +254,58 @@ def test_generate_request_log_is_deterministic_and_well_formed():
 
     timestamps = [row["timestamp"] for row in log_1]
     assert timestamps == sorted(timestamps)
+
+
+# --- agentlib.injection_lab ---
+#
+# The Chapter 6 lab's core invariant, asserted here so it can't drift: the sanitizer the
+# chapter specifies catches five of the eight shipped payloads and misses three. If a change
+# ever closes that gap, ch06-write-a-payload silently stops being an exercise -- the learner
+# would be asked to defeat a filter with no known gap in it.
+
+
+def test_injection_lab_every_shipped_payload_is_obeyed_by_the_naive_brain():
+    from agentlib.injection_lab import PAYLOADS, obeys_directive, vulnerable_brain
+
+    for payload in PAYLOADS:
+        assert obeys_directive(payload["text"]) is not None, payload["id"]
+        decision = vulnerable_brain(payload["text"])
+        assert decision["tool"] == "issue_refund", payload["id"]
+
+
+def test_injection_lab_sanitizer_catches_exactly_five_of_eight():
+    from agentlib.injection_lab import PAYLOADS, obeys_directive
+    from solutions.reference.ch06 import sanitize_ticket_text
+
+    caught = {
+        p["id"] for p in PAYLOADS if obeys_directive(sanitize_ticket_text(p["text"])) is None
+    }
+    expected = {p["id"] for p in PAYLOADS if p["caught"]}
+    assert caught == expected, f"expected {sorted(expected)}, caught {sorted(caught)}"
+    assert len(caught) == 5
+
+
+def test_injection_lab_sanitizer_leaves_benign_tickets_untouched():
+    from agentlib.injection_lab import BENIGN_TICKETS
+    from solutions.reference.ch06 import sanitize_ticket_text
+
+    for ticket in BENIGN_TICKETS:
+        assert sanitize_ticket_text(ticket) == ticket, ticket
+
+
+def test_injection_lab_reference_payload_bypasses_layer_one_and_is_stopped_by_layer_two():
+    from agentlib.injection_lab import ORDERS, obeys_directive, vulnerable_brain
+    from solutions.reference.ch06 import (
+        LEARNER_PAYLOAD,
+        check_refund_policy,
+        sanitize_ticket_text,
+    )
+
+    sanitized = sanitize_ticket_text(LEARNER_PAYLOAD)
+    assert obeys_directive(sanitized) is not None, "layer 1 should not neutralize it"
+
+    decision = vulnerable_brain(sanitized)
+    allowed, _ = check_refund_policy(
+        decision["args"]["order_id"], decision["args"]["amount"], ORDERS
+    )
+    assert allowed is False, "layer 2 must still refuse the refund"
