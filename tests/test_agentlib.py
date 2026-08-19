@@ -360,3 +360,273 @@ def test_every_answer_entry_has_both_halves():
         assert entry.get("answer", "").strip(), f"{qid}: empty answer"
         concepts = entry.get("key_concepts")
         assert isinstance(concepts, list) and concepts, f"{qid}: key_concepts must be a non-empty list"
+
+
+# --- parallel tool calls: the invariant the per-helper shape tests missed -----------------
+
+
+def _tool_use_ids(messages: list) -> list:
+    """Every tool_use id the assistant turns claim, in order (Anthropic shape)."""
+    out = []
+    for m in messages:
+        if m.get("role") != "assistant":
+            continue
+        for block in m.get("content") or []:
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                out.append(block["id"])
+    return out
+
+
+def _tool_result_ids(messages: list) -> list:
+    """Every tool_use_id the user turns answer, in order (Anthropic shape)."""
+    out = []
+    for m in messages:
+        if m.get("role") != "user":
+            continue
+        for block in m.get("content") or []:
+            if isinstance(block, dict) and block.get("type") == "tool_result":
+                out.append(block["tool_use_id"])
+    return out
+
+
+def test_format_tool_results_batches_into_one_user_turn_for_anthropic(monkeypatch):
+    """Anthropic wants every tool_result for one assistant turn in a single user message."""
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "anthropic")
+    a = llm_client.ToolCall(id="tc_1", name="calculator", input={"expression": "2+2"})
+    b = llm_client.ToolCall(id="tc_2", name="mock_search", input={"query": "founded"})
+
+    msgs = llm_client.format_tool_results([(a, "4"), (b, "1998")])
+
+    assert len(msgs) == 1, f"expected one batched user turn, got {len(msgs)}"
+    assert msgs[0]["role"] == "user"
+    assert [blk["tool_use_id"] for blk in msgs[0]["content"]] == ["tc_1", "tc_2"]
+
+
+def test_format_tool_results_emits_one_message_per_call_for_openai(monkeypatch):
+    """OpenAI wants the opposite: a separate role='tool' message per tool_call_id."""
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "openai")
+    a = llm_client.ToolCall(id="tc_1", name="calculator", input={"expression": "2+2"})
+    b = llm_client.ToolCall(id="tc_2", name="mock_search", input={"query": "founded"})
+
+    msgs = llm_client.format_tool_results([(a, "4"), (b, "1998")])
+
+    assert len(msgs) == 2, f"expected one message per call, got {len(msgs)}"
+    assert [m["role"] for m in msgs] == ["tool", "tool"]
+    assert [m["tool_call_id"] for m in msgs] == ["tc_1", "tc_2"]
+
+
+def test_format_tool_results_handles_no_calls(monkeypatch):
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "anthropic")
+    assert llm_client.format_tool_results([]) == []
+
+
+def test_parallel_tool_calls_leave_no_tool_use_unanswered(monkeypatch):
+    """Replay a conversation where the model emits TWO tool calls in one turn.
+
+    This is the case that shipped broken in Chapter 1 and that the per-helper shape tests
+    could not catch, because each helper was correct in isolation. The bug only appears when
+    they are composed across a turn: an assistant message carrying two `tool_use` blocks
+    answered by a single `tool_result` is an invalid request to Anthropic, and the failure is
+    intermittent because it depends on whether the model chose to parallelise.
+
+    The invariant is the whole contract: every tool_use id is answered exactly once.
+    """
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "anthropic")
+
+    a = llm_client.ToolCall(id="tc_1", name="calculator", input={"expression": "12*7"})
+    b = llm_client.ToolCall(id="tc_2", name="mock_search", input={"query": "founded"})
+    parallel = llm_client.ModelResponse(text="", tool_calls=[a, b])
+
+    messages = [{"role": "user", "content": "How many days in 12 weeks, and when was it founded?"}]
+    messages.append(llm_client.format_assistant_tool_call(parallel))
+    messages.extend(llm_client.format_tool_results([(a, "84"), (b, "1998")]))
+
+    used, answered = _tool_use_ids(messages), _tool_result_ids(messages)
+    assert used == ["tc_1", "tc_2"], f"both calls should be on the assistant turn; got {used}"
+    assert sorted(answered) == sorted(used), (
+        f"every tool_use block must have a matching tool_result. Claimed {used}, answered "
+        f"{answered} -- an unanswered tool_use is rejected by the API, not merely ignored."
+    )
+
+
+def test_answering_only_the_first_parallel_call_is_detectably_broken(monkeypatch):
+    """The exact shape that shipped: two tool_use blocks, one tool_result.
+
+    Pinned as a test so the invariant above is known to have teeth rather than being
+    trivially satisfiable.
+    """
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "anthropic")
+
+    a = llm_client.ToolCall(id="tc_1", name="calculator", input={"expression": "12*7"})
+    b = llm_client.ToolCall(id="tc_2", name="mock_search", input={"query": "founded"})
+    parallel = llm_client.ModelResponse(text="", tool_calls=[a, b])
+
+    broken = [{"role": "user", "content": "..."}]
+    broken.append(llm_client.format_assistant_tool_call(parallel))
+    broken.append(llm_client.format_tool_result(a, "84"))  # only the first -- the bug
+
+    assert _tool_use_ids(broken) == ["tc_1", "tc_2"]
+    assert _tool_result_ids(broken) == ["tc_1"], "the shipped bug answered only the first call"
+    assert sorted(_tool_result_ids(broken)) != sorted(_tool_use_ids(broken)), (
+        "if this ever passes, the invariant check above has stopped detecting the bug"
+    )
+
+
+# --- Chapter 1's RealLLMBrain, driven without an API key ---------------------------------
+
+
+def _load_real_llm_brain():
+    """Exec Chapter 1's RealLLMBrain cell and return the class.
+
+    Loaded out of the notebook rather than copied here on purpose: a copy drifts, and the
+    point of these tests is to exercise the code the learner actually runs. This class is
+    otherwise untested by anything, because it only executes when HAS_KEY is true and CI
+    deliberately runs with no key -- which is exactly how a parallel-tool-call bug shipped
+    in it unnoticed.
+    """
+    import json as _json
+    from pathlib import Path
+
+    nb_path = Path(__file__).resolve().parent.parent / "curriculum" / "01_fundamentals.ipynb"
+    nb = _json.loads(nb_path.read_text())
+    source = next(
+        "".join(c["source"]) for c in nb["cells"] if "class RealLLMBrain" in "".join(c["source"])
+    )
+    namespace = {"llm_client": llm_client, "json": _json}
+    exec(compile(source, str(nb_path), "exec"), namespace)
+    return namespace["RealLLMBrain"]
+
+
+def _drive_brain(brain, script, monkeypatch, max_steps: int = 8):
+    """Run `brain` through a run_agent-shaped loop against a scripted sequence of responses."""
+    state = {"i": 0}
+
+    def stub_call_model(**kwargs):
+        response = script[min(state["i"], len(script) - 1)]
+        state["i"] += 1
+        return response
+
+    monkeypatch.setattr(llm_client, "call_model", stub_call_model)
+
+    messages = [{"role": "user", "content": "How many days in 12 weeks, and when was it founded?"}]
+    actions = []
+    for _ in range(max_steps):
+        action = brain(messages)
+        actions.append(action)
+        if action["action"] == "final_answer":
+            break
+        messages.append({"role": "user", "content": f"observation for {action['action']}"})
+    return actions, state["i"]
+
+
+def _parallel_script():
+    a = llm_client.ToolCall(id="tc_1", name="calculator", input={"expression": "12*7"})
+    b = llm_client.ToolCall(id="tc_2", name="mock_search", input={"query": "founded"})
+    return a, b, [
+        llm_client.ModelResponse(text="", tool_calls=[a, b]),
+        llm_client.ModelResponse(text="84 days, founded 1998.", tool_calls=[]),
+    ]
+
+
+def test_real_llm_brain_answers_every_parallel_tool_call(monkeypatch):
+    """A model turn with two tool calls must end up with two tool results."""
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "anthropic")
+    brain = _load_real_llm_brain()(model="stub")
+    _, _, script = _parallel_script()
+
+    _drive_brain(brain, script, monkeypatch)
+    messages = brain.provider_messages
+
+    assert sorted(_tool_use_ids(messages)) == sorted(_tool_result_ids(messages)), (
+        f"tool_use {_tool_use_ids(messages)} vs tool_result {_tool_result_ids(messages)}: an "
+        "unanswered tool_use block makes the whole request invalid, which is why this failed "
+        "intermittently -- only when the model chose to parallelise."
+    )
+
+
+def test_real_llm_brain_batches_parallel_results_into_one_turn(monkeypatch):
+    """Anthropic wants both results in a single user turn, not two consecutive ones."""
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "anthropic")
+    brain = _load_real_llm_brain()(model="stub")
+    _, _, script = _parallel_script()
+
+    _drive_brain(brain, script, monkeypatch)
+
+    result_turns = [
+        m
+        for m in brain.provider_messages
+        if m.get("role") == "user"
+        and any(isinstance(b, dict) and b.get("type") == "tool_result" for b in (m.get("content") or []))
+    ]
+    assert len(result_turns) == 1, (
+        f"expected one batched user turn carrying both tool_result blocks, got {len(result_turns)}"
+    )
+    # Both halves matter. Counting turns alone is satisfied by a brain that answers only the
+    # first call -- it also produces exactly one result turn, just an incomplete one.
+    blocks = [b for b in result_turns[0]["content"] if b.get("type") == "tool_result"]
+    assert [b["tool_use_id"] for b in blocks] == ["tc_1", "tc_2"], (
+        f"the single turn has to carry BOTH results, in call order; got {blocks}"
+    )
+
+
+def test_real_llm_brain_serves_parallel_calls_without_extra_model_calls(monkeypatch):
+    """The second queued call is served from the first response, not by re-prompting."""
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "anthropic")
+    brain = _load_real_llm_brain()(model="stub")
+    _, _, script = _parallel_script()
+
+    actions, model_calls = _drive_brain(brain, script, monkeypatch)
+
+    assert [a["action"] for a in actions] == ["calculator", "mock_search", "final_answer"], (
+        f"both tool calls should reach the sequential loop, in order; got {actions}"
+    )
+    assert model_calls == 2, (
+        f"two tool calls came from ONE model turn, so this run needs two model calls total "
+        f"(the parallel turn and the final answer), not {model_calls}"
+    )
+
+
+def test_real_llm_brain_still_handles_one_call_at_a_time(monkeypatch):
+    """The sequential path is the common case and must not regress."""
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "anthropic")
+    brain = _load_real_llm_brain()(model="stub")
+    a = llm_client.ToolCall(id="tc_1", name="calculator", input={"expression": "12*7"})
+    b = llm_client.ToolCall(id="tc_2", name="mock_search", input={"query": "founded"})
+    script = [
+        llm_client.ModelResponse(text="", tool_calls=[a]),
+        llm_client.ModelResponse(text="", tool_calls=[b]),
+        llm_client.ModelResponse(text="84 days, founded 1998.", tool_calls=[]),
+    ]
+
+    actions, model_calls = _drive_brain(brain, script, monkeypatch)
+    messages = brain.provider_messages
+
+    assert [x["action"] for x in actions] == ["calculator", "mock_search", "final_answer"]
+    assert model_calls == 3, f"one call per turn means three model calls, got {model_calls}"
+    assert sorted(_tool_use_ids(messages)) == sorted(_tool_result_ids(messages))
+
+
+def test_real_llm_brain_parallel_results_on_openai(monkeypatch):
+    """OpenAI needs the opposite batching: a separate tool message per call."""
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "openai")
+    brain = _load_real_llm_brain()(model="stub")
+    _, _, script = _parallel_script()
+
+    _drive_brain(brain, script, monkeypatch)
+
+    tool_messages = [m for m in brain.provider_messages if m.get("role") == "tool"]
+    assert [m["tool_call_id"] for m in tool_messages] == ["tc_1", "tc_2"], (
+        f"expected one tool message per call; got {tool_messages}"
+    )
+
+
+def test_real_llm_brain_final_answer_without_tools(monkeypatch):
+    """A question needing no tool at all still terminates cleanly."""
+    monkeypatch.setattr(llm_client, "LLM_PROVIDER", "anthropic")
+    brain = _load_real_llm_brain()(model="stub")
+    script = [llm_client.ModelResponse(text="Paris.", tool_calls=[])]
+
+    actions, model_calls = _drive_brain(brain, script, monkeypatch)
+
+    assert actions == [{"action": "final_answer", "action_input": "Paris."}]
+    assert model_calls == 1
