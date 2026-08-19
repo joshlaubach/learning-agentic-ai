@@ -272,6 +272,46 @@ def format_tool_result(tool_call: ToolCall, result_content: str) -> dict:
         raise ValueError(f"Unsupported LLM_PROVIDER={LLM_PROVIDER!r}")
 
 
+def format_tool_results(pairs: list) -> list[dict]:
+    """Build the follow-up message(s) for one or more tool results, correctly batched.
+
+    Takes [(ToolCall, result_string), ...] and returns a LIST of messages, because the right
+    batching differs by provider and getting it wrong is an invalid request rather than a
+    degraded answer:
+
+    - Anthropic wants every `tool_result` block for a given assistant turn inside ONE user
+      message. An assistant turn carrying two `tool_use` blocks must be answered by a single
+      user turn carrying two `tool_result` blocks.
+    - OpenAI wants one separate `role: "tool"` message per `tool_call_id`.
+
+    Prefer this over calling format_tool_result() in a loop. A model that emits parallel tool
+    calls produces one assistant turn with several `tool_use` blocks, and replying with a
+    single result -- or with several separate user turns -- leaves those blocks unanswered.
+    Anthropic rejects that outright: every `tool_use` block must have a matching `tool_result`.
+    """
+    if not pairs:
+        return []
+
+    if LLM_PROVIDER == "anthropic":
+        return [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_call.id,
+                        "content": result_content,
+                    }
+                    for tool_call, result_content in pairs
+                ],
+            }
+        ]
+    elif LLM_PROVIDER == "openai":
+        return [format_tool_result(tc, content) for tc, content in pairs]
+    else:
+        raise ValueError(f"Unsupported LLM_PROVIDER={LLM_PROVIDER!r}")
+
+
 def format_assistant_tool_call(response: ModelResponse) -> dict:
     """Build the assistant-turn message representing a model's tool call(s), in whichever
     shape the active provider expects, so it can be appended to `messages` before the
