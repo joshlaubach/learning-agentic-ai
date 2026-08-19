@@ -103,6 +103,119 @@ either provider's cheapest current-generation model. Per-token pricing changes o
 the provider's live pricing page rather than trusting a number written into a notebook months
 or years after it was built.
 
+## How this course works
+
+This is a build-it course, not a read-it one. Most of what you learn here, you learn by
+writing code that doesn't work yet and then making it work.
+
+Every chapter contains **graded cells**: a function with a docstring describing what it has to
+do, a `raise NotImplementedError` where the body should be, and a `check(...)` call underneath
+that grades whatever you write against a suite of assertions.
+
+```python
+def retry_with_backoff(fn, max_retries: int = 6, base_delay: float = 1.0, jitter: float = 0.5,
+                       seed: int = 1, sleep_fn=None, retry_predicate=None):
+    '''Reusable exponential backoff + jitter wrapper.
+
+    The delay before retry number `attempt` (1-based) is:
+
+        base_delay * 2 ** (attempt - 1) + rng.uniform(0, jitter)
+
+    Exponential, not linear. Linear growth looks almost identical over three attempts and
+    then stops helping precisely when it matters [...]
+
+    Back off AFTER a failure. A call that succeeds first time must not sleep at all.
+    '''
+    raise NotImplementedError("Implement me, then re-run this cell")
+
+
+retry_with_backoff = check("ch04-backoff", retry_with_backoff)
+```
+
+That docstring is the spec — it is longer than most, and deliberately so. The reasoning it
+gives you (*why* exponential rather than linear, *when* not to sleep) is the part worth
+keeping; the code is just how you prove you took it in.
+
+**If you clone this repo and run Chapter 1, the notebook will fail. That is the design, not a
+bug.** Delete the `raise`, write the function, re-run the cell.
+
+### What failure looks like
+
+The checks are meant to teach, not just to reject. You get partial credit, the exact call that
+broke, and an explanation of why it's wrong:
+
+````
+ch07-json-repair: 5/8 checks passed.
+  [4/8] a brace inside a string value is not the end of the object
+      matching braces with a non-greedy regex stops at the first '}' it sees, which here
+      is inside a string value. Scan to the LAST '}' instead. Got None
+      failing call: repair_json('```json\n{"name": "numpy", "version": "2.4.6", "summary":
+      "use {} to build an empty dict"}\n```')
+
+Fix the function above and re-run this cell.
+````
+
+There are **36 graded tasks and 304 assertion cases** across the nine chapters, distributed
+roughly two to six per chapter. They are adversarially tested: for every task, a plausible
+wrong answer is implemented in `tests/test_grader_catches_wrong_answers.py` and asserted to
+fail. A suite that any reasonable attempt passes teaches nothing, so each one has at least one
+case aimed at a specific mistake — not a typo or an empty function, but a version that looks
+right, runs cleanly, and returns a value of the correct type.
+
+### Tracking progress
+
+```bash
+python grade.py                 # every task, with pass/fail and case counts
+python grade.py --by-chapter    # one line per chapter
+python grade.py --count-cases   # total assertion cases
+```
+
+Results are cached in `.progress.json` as you go. It's gitignored, so a fresh clone always
+starts empty.
+
+### The two modes
+
+`GRADER_MODE` controls what gets graded:
+
+| mode | what it grades | when to use it |
+|---|---|---|
+| `learner` (default) | the function you wrote in the notebook | always, while working through the course |
+| `reference` | the model answer in `solutions/reference/` | CI only |
+
+`reference` exists so continuous integration can execute every notebook end to end without
+shipping the answers inside them. **Don't set it while learning** — it makes every graded cell
+pass without you writing anything, which feels like progress and isn't. If a chapter suddenly
+stops failing, check whether `GRADER_MODE` is still exported in your shell.
+
+### Where the answers are
+
+Two kinds, both outside the notebooks:
+
+- **Code** — `solutions/reference/ch01.py` … `ch09.py`, one model implementation per graded
+  task.
+- **Prose** — `solutions/ch0N_*_answers.md`, full written answers to every chapter's interview
+  drill, plus `solutions/question_bank_answers.json` for all 99 question-bank entries.
+
+Nothing in `curriculum/` or `interview_prep/` contains an inline answer, which is deliberate:
+the reveal is a file you have to open on purpose, not a cell you scroll past by accident. The
+intended workflow is to attempt from memory first, then check.
+
+### Running the whole suite
+
+```bash
+# the nine chapters plus the agentlib unit tests -- the quick version
+GRADER_MODE=reference pytest --nbmake curriculum/*.ipynb tests/
+
+# everything, exactly as CI runs it
+GRADER_MODE=reference pytest --nbmake curriculum/*.ipynb interview_prep/*.ipynb \
+  capstone/*.ipynb solutions/*.ipynb tests/ capstone/test_capstone.py
+```
+
+Both execute the notebooks against the reference answers and need **no API key** — CI runs
+with no provider secrets at all, deliberately, so every mock fallback stays honest. If this
+passes on your machine, your environment is set up correctly, which is worth confirming
+before concluding that a failing chapter is your fault.
+
 ## Curriculum
 
 | # | Chapter | Time | What it covers |
@@ -132,7 +245,7 @@ Unlike the numbered chapters, [`interview_prep/`](interview_prep/) is meant to b
 repeatedly (for example, the week before an actual interview), independent of working through
 the notebooks in order:
 
-- `question_bank.json`: a tagged bank of 70+ scenario/follow-up interview questions across
+- `question_bank.json`: a tagged bank of 99 scenario/follow-up interview questions across
   all 9 chapters, none scraped from any interview-question site.
 - `mock_interview.ipynb`: a randomized, timed, cross-chapter mock interview with branching
   follow-ups based on your typed answers.
@@ -151,6 +264,10 @@ a full written model answer, but only in [`solutions/`](solutions/), kept entire
 from the notebooks and the question bank itself. No notebook and no question-bank entry
 contains an inline answer. The intended workflow: attempt the cold-answer questions from
 memory first, *then* open the matching file in `solutions/` to check yourself.
+
+The same directory also holds `solutions/reference/`, one model implementation per graded
+exercise — the code half of the same bargain, and what CI grades against in `reference` mode.
+See [How this course works](#how-this-course-works) above.
 
 ## Citations
 
