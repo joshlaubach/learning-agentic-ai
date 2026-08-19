@@ -123,3 +123,131 @@ The throughline: since the provider's own version number can't be trusted to sig
 breaking change, the integration has to treat its own schema validation as the detector, and
 report failures in it as urgently as it would any other observability signal about a system
 that changed without warning.
+
+---
+
+## 5. Rapid-fire: malformed JSON from the model
+
+**One sentence:** turn on schema-constrained output at the API level — JSON mode,
+`response_format`, or a grammar — so an invalid token cannot be generated in the first place.
+
+That is the right first answer, and it is right for a specific reason worth being able to
+state: it removes the failure mode rather than responding to it. The three alternatives people
+reach for all respond to it. A retry loop assumes the failure is transient. A repair pass
+assumes the damage is outside the JSON rather than inside it. A larger model assumes the
+failure is a capability problem, and buys you a lower rate rather than a guarantee — which is
+arguably worse, because a 0.5% malformation rate is one that no longer shows up in staging.
+
+**What I'd want to know before trusting it:** whether the provider actually offers constrained
+decoding for this schema, and whether the failures are transient or systematic. Those are
+different problems. If the same prompt and schema produce the same broken shape every time, no
+retry budget helps — the loop just multiplies the bill by the budget. If the failures are
+scattered and rare, a retry is a legitimate stopgap while you wire up the real fix. And if
+constrained decoding isn't available at all, the honest answer is a repair pass *plus*
+validation *plus* a bounded retry, in that order, and knowing that this stack has a ceiling.
+
+Raising temperature, for completeness, is the opposite of a fix. Lower it if anything —
+though determinism in format is not what temperature primarily controls, and reaching for it
+first suggests the mechanism isn't clear.
+
+---
+
+## 6. Cold diagnosis: the retry loop that helps everyone except one customer
+
+The distinguishing property is that this customer's failures are **systematic**, not
+transient, and a retry loop can only ever fix the second kind.
+
+For everyone else, malformation is a sampling accident: the same request would mostly have
+succeeded, so a fresh generation is a genuinely fresh roll and the error rate falls
+geometrically with attempts. For this customer, something about their input makes the model
+produce the same malformed output every time — and re-prompting reproduces it exactly. Four
+attempts means four identical failures and four times the cost.
+
+What to look for in their traffic, roughly in order of likelihood:
+
+- **Content that collides with the JSON encoding.** Unescaped quotes, backslashes, or newlines
+  in the source text — a company name with a `"` in it, a Windows file path, a snippet of code.
+  The model reproduces the character verbatim and breaks its own string literal.
+- **Non-ASCII or RTL text**, which shifts tokenization enough to change what the model emits
+  around the structural characters.
+- **A field that is genuinely absent from their documents**, so the model improvises: emits
+  `null` unquoted, or omits the key, or writes a prose apology where a value belongs.
+- **Length.** If their inputs are longer than everyone else's, the response may be hitting the
+  output token limit and truncating mid-object. Truncation is 100% reproducible and looks
+  exactly like malformation.
+
+That last one is worth calling out separately because the fix is different: truncation is not
+a format problem and constrained decoding will not save you from it either — the grammar
+happily produces a valid prefix and then runs out of budget. Check `finish_reason` before
+concluding anything about format.
+
+The general lesson: before adding retries to anything, ask whether a second attempt is
+actually an independent trial. If it isn't, a retry budget is just a spend cap on a failure.
+
+---
+
+## 7. Judgment call: does constrained output let you delete validation?
+
+No, and the distinction is one interviewers push on deliberately, because it separates people
+who have used the feature from people who have read about it.
+
+**What the guarantee covers:** the output parses, and it conforms to the schema. Required
+fields are present, types match, and no key outside the schema appears. That is real, and it
+genuinely does replace your *parser* — the fence-stripping, brace-scanning, try/except layer
+can go.
+
+**What it does not cover** is everything about whether the content is right:
+
+- **Values can be wrong.** The chapter's `_c5` case is exactly this: a decoder that masks
+  correctly but picks carelessly returns `{"name": "nump", "summary": "Fund"}` — perfect JSON,
+  correct keys, truncated garbage in the values. The grammar has no opinion about which legal
+  string is the true one.
+- **Values can be hallucinated.** Constraining the shape gives the model *no* option to say
+  "this field isn't in the document." If `version` is required and there is no version in the
+  source, it must emit some string, so it invents one. Constrained decoding can actively
+  *increase* fabrication on fields the source doesn't support — make genuinely optional fields
+  nullable in the schema, or the constraint becomes a fabrication requirement.
+- **Cross-field consistency is unchecked.** `start_date` after `end_date`, a total that isn't
+  the sum of the line items, a currency that doesn't match the country. No grammar catches
+  these.
+- **Business rules are unchecked.** An amount within schema but outside any plausible range, an
+  ID matching the type but referring to nothing.
+
+So the layers do different jobs and both stay: constrained decoding is a **syntactic and
+structural** guarantee, and validation is a **semantic** one. The teammate is right that one
+specific piece of code can go — the JSON repair path — and wrong that the validation can.
+
+---
+
+## 8. Design judgment: six fields, two frequently absent
+
+The core move is to make "absent" a **representable value in the schema** rather than a
+failure of extraction, and then keep the two apart at every layer.
+
+**Schema.** The four reliable fields are required and non-null. The two frequently-absent
+fields are declared nullable — `str | None`, with `None` an explicitly legal value the model
+is told to use when the document doesn't contain the field. This is the load-bearing decision.
+If those fields are required and non-nullable, constrained decoding forces the model to emit
+*something* for a field that isn't there, and it will oblige with a plausible invention. The
+schema would be converting a missing value into a fabricated one, silently, on exactly the
+fields where you can least afford it.
+
+**Success condition.** Three outcomes, not two:
+
+- `ok` — parsed, on-schema, all four required fields populated. The optional two may be null.
+- `incomplete` — parsed and on-schema, but a required field is null or empty. This is a
+  *document* problem: retrying will not help, and the record should route to human review.
+- `failed` — did not parse, or did not conform. This is a *pipeline* problem: worth a retry,
+  and worth alerting on if the rate moves.
+
+Collapsing `incomplete` into `failed` is what generates the phantom retry storms — the loop
+burns its budget re-asking for something that was never in the document. Collapsing it into
+`ok` is worse, because a half-filled invoice flows downstream looking complete. The chapter's
+`_t8` case is this exact mistake in miniature: a model that emits flawless JSON with a field
+quietly missing, accepted by any success condition built on "did it parse".
+
+**Instrumentation.** Track the null rate per field, not just the overall failure rate. A field
+that is null 30% of the time is a documented property of your corpus; the same field jumping
+to 80% overnight is an upstream change — a new document template, a different scanner, a
+prompt edit — and it is invisible in an aggregate success metric that counts those records as
+successes.

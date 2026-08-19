@@ -15,6 +15,8 @@ entry here; if a test here starts failing, the case suite has a hole in it.
 from __future__ import annotations
 
 import asyncio
+import json
+import re
 
 import pytest
 
@@ -1212,3 +1214,181 @@ def test_written_diagnoses_reject_a_one_line_answer():
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
+
+
+# --- ch07-json-repair ---
+
+
+def test_ch07_json_repair_rejects_a_bare_json_loads():
+    """The most common first attempt: assume the model returned clean JSON."""
+
+    def wrong(raw):
+        try:
+            return json.loads(raw)
+        except ValueError:
+            return None
+
+    _rejects("ch07-json-repair", wrong)
+    _accepts("ch07-json-repair")
+
+
+def test_ch07_json_repair_rejects_a_non_greedy_brace_match():
+    """Looks right, and truncates any object with a '}' inside a string value."""
+
+    def wrong(raw):
+        m = re.search(r"\{.*?\}", raw, re.DOTALL)
+        if not m:
+            return None
+        try:
+            return json.loads(m.group(0))
+        except ValueError:
+            return None
+
+    _rejects("ch07-json-repair", wrong)
+
+
+def test_ch07_json_repair_rejects_returning_an_empty_dict_on_failure():
+    """Never crashes, and collapses 'unparseable' into 'a record with no fields'."""
+
+    def wrong(raw):
+        from agentlib.structured_outputs import reference_repair
+
+        return reference_repair(raw) or {}
+
+    _rejects("ch07-json-repair", wrong)
+
+
+# --- ch07-retry-budget ---
+
+
+def test_ch07_retry_budget_rejects_an_unbounded_loop():
+    """Ignores max_attempts. Terminates, so it looks fine -- and bills for 50 generations."""
+
+    def wrong(model, max_attempts=4):
+        from agentlib.structured_outputs import FIELDS, reference_repair
+
+        for attempt in range(1, 51):
+            parsed = reference_repair(model.generate())
+            if parsed is not None and set(parsed) == set(FIELDS):
+                return parsed, attempt
+        return None, 50
+
+    _rejects("ch07-retry-budget", wrong)
+    _accepts("ch07-retry-budget")
+
+
+def test_ch07_retry_budget_rejects_accepting_any_parse():
+    """Stops as soon as something parses, without checking the fields are all there."""
+
+    def wrong(model, max_attempts=4):
+        from agentlib.structured_outputs import reference_repair
+
+        for attempt in range(1, max_attempts + 1):
+            parsed = reference_repair(model.generate())
+            if parsed is not None:
+                return parsed, attempt
+        return None, max_attempts
+
+    _rejects("ch07-retry-budget", wrong)
+
+
+def test_ch07_retry_budget_rejects_a_miscounted_attempt_total():
+    """Reports a 0-based attempt count, so every cost estimate built on it is off by one."""
+
+    def wrong(model, max_attempts=4):
+        from agentlib.structured_outputs import FIELDS, reference_repair
+
+        for attempt in range(max_attempts):
+            parsed = reference_repair(model.generate())
+            if parsed is not None and set(parsed) == set(FIELDS):
+                return parsed, attempt
+        return None, max_attempts
+
+    _rejects("ch07-retry-budget", wrong)
+
+
+# --- ch07-constrained-decode ---
+
+
+def test_ch07_constrained_decode_rejects_greedy_decoding_without_the_mask():
+    """Drives the model token by token and never filters -- i.e. plain generation."""
+
+    def wrong(model, fields):
+        from agentlib.structured_outputs import is_complete
+
+        model.reset()
+        emitted = []
+        while not is_complete(emitted, fields) and len(emitted) < 40:
+            token, _ = max(model.candidates(), key=lambda pair: pair[1])
+            model.accept(token)
+            emitted.append(token)
+        return json.loads("".join(emitted))
+
+    _rejects("ch07-constrained-decode", wrong)
+    _accepts("ch07-constrained-decode")
+
+
+def test_ch07_constrained_decode_rejects_taking_the_first_legal_token():
+    """Masks correctly, then assumes candidate order is a ranking.
+
+    This is the subtle one, and the reason the task has a case for it: the output is
+    well-formed JSON with exactly the right keys, and the values are wrong.
+    """
+
+    def wrong(model, fields):
+        from agentlib.structured_outputs import is_allowed, is_complete
+
+        model.reset()
+        emitted = []
+        while not is_complete(emitted, fields):
+            legal = [(t, s) for t, s in model.candidates() if is_allowed(emitted, t, fields)]
+            token = legal[0][0]
+            model.accept(token)
+            emitted.append(token)
+        return json.loads("".join(emitted))
+
+    _rejects("ch07-constrained-decode", wrong)
+
+
+def test_ch07_constrained_decode_rejects_running_past_the_closing_brace():
+    """Stops on 'no legal token left' rather than on 'the object is finished'."""
+
+    def wrong(model, fields):
+        from agentlib.structured_outputs import is_allowed
+
+        model.reset()
+        emitted = []
+        while True:
+            legal = [(t, s) for t, s in model.candidates() if is_allowed(emitted, t, fields)]
+            if not legal:
+                break
+            token, _ = max(legal, key=lambda pair: pair[1])
+            model.accept(token)
+            emitted.append(token)
+        # The model keeps offering its epilogue, so keep taking whatever it gives.
+        while model.candidates() and len(emitted) < 40:
+            token, _ = max(model.candidates(), key=lambda pair: pair[1])
+            model.accept(token)
+            emitted.append(token)
+        return json.loads("".join(emitted))
+
+    _rejects("ch07-constrained-decode", wrong)
+
+
+def test_ch07_constrained_decode_rejects_forgetting_to_advance_the_model():
+    """Filters and picks correctly, but never calls accept(), so the model never moves on."""
+
+    def wrong(model, fields):
+        from agentlib.structured_outputs import is_allowed, is_complete
+
+        model.reset()
+        emitted = []
+        while not is_complete(emitted, fields) and len(emitted) < 40:
+            legal = [(t, s) for t, s in model.candidates() if is_allowed(emitted, t, fields)]
+            if not legal:
+                break
+            token, _ = max(legal, key=lambda pair: pair[1])
+            emitted.append(token)
+        return json.loads("".join(emitted))
+
+    _rejects("ch07-constrained-decode", wrong)

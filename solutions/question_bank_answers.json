@@ -716,5 +716,56 @@
       "quiet failure modes justify caution even for small changes"
     ],
     "answer": "Agree to skip it for changes with an obviously bounded, immediately-visible failure mode: a genuine typo fix where any problem would be instantly and unambiguously obvious, not a subtle behavior shift. Insist on the canary anyway for anything whose failure mode could plausibly be *quiet*: a wording change is exactly the kind of thing that can shift refusal rate, tone, or helpfulness in a way that looks like a normal, well-formed response and would only show up as a metric drift, not an error. And \"it's just a small wording change\" is not, by itself, evidence that its failure mode (if any) would be loud rather than quiet."
+  },
+  "struct-001": {
+    "key_concepts": [
+      "schema-constrained decoding",
+      "removing the failure mode vs. responding to it",
+      "retry only helps transient failures",
+      "validation is still required"
+    ],
+    "answer": "Schema-constrained decoding at the API level — JSON mode, `response_format`, or a grammar — so an invalid token cannot be generated at all. The reason it beats the alternatives is structural, not empirical: it removes the failure mode, where every alternative responds to it. A retry loop assumes the malformation is transient; when the same prompt, schema, and model produce the same broken shape every time, retrying reproduces it exactly and the budget just multiplies the bill. A repair pass (strip fences, find braces) fixes noise wrapped AROUND the JSON and can do nothing about broken syntax INSIDE it — an unquoted key survives every trim you can write. A larger model lowers the rate rather than guaranteeing anything, which is arguably worse, since a 0.5% malformation rate no longer reproduces in staging. Raising temperature is the opposite of a fix. The one caveat to state unprompted: the grammar guarantees syntax and schema, not correctness, so validation stays."
+  },
+  "struct-002": {
+    "key_concepts": [
+      "JSON mode / schema-constrained decoding",
+      "wrapper noise vs. syntax corruption",
+      "repair as a safety net, not the mechanism"
+    ],
+    "answer": "Use JSON mode or schema-constrained decoding at the API level. Fences and preamble are the model being conversational, and constraining the output format stops it at the source. The class the fix in question — a repair/trim pass — would NOT handle is corruption inside the JSON itself: an unquoted key (`{name: \"numpy\"}`), a trailing comma before the closing brace, a truncated object from hitting the output token limit. Those are the interesting failures precisely because no amount of stripping the outside makes the inside parse. That split is the whole argument: a repair pass is a reasonable safety net and a bad primary mechanism."
+  },
+  "struct-003": {
+    "key_concepts": [
+      "systematic vs. transient failure",
+      "retries need independent trials",
+      "content colliding with JSON encoding",
+      "truncation vs. malformation"
+    ],
+    "answer": "ACME's failures are systematic, not transient, and a retry loop can only fix the transient kind. For the other tenants, malformation is a sampling accident, so a fresh generation is a genuinely independent trial and the error rate falls geometrically with attempts. For ACME, something in their input makes the model produce the identical broken output every time. Likely causes, in rough order: content that collides with the JSON encoding (unescaped quotes or backslashes in a company name or file path), non-ASCII text shifting tokenization around the structural characters, a required field genuinely absent from their documents so the model improvises, or — importantly — inputs long enough to hit the output token limit, which truncates mid-object and is 100% reproducible. Check `finish_reason` before concluding anything about format; truncation is not a format problem and constrained decoding will not fix it either. Ship: constrained decoding for the format failures, a length/truncation check, and a rule that a retry only fires when the second attempt is actually an independent trial."
+  },
+  "struct-004": {
+    "key_concepts": [
+      "syntactic vs. semantic guarantees",
+      "hallucination under required fields",
+      "cross-field and business-rule validation"
+    ],
+    "answer": "The guarantee covers parse-ability and schema conformance: required fields present, types correct, no extra keys. That genuinely does replace the parser — the fence-stripping and try/except layer can go. It covers nothing about whether the content is right. Values can simply be wrong (a decoder that masks correctly but picks the wrong legal token returns perfect JSON with garbage in it). Values can be hallucinated, and constrained decoding makes this actively worse on absent fields: if `version` is required and non-nullable, the model has no legal way to say 'not in the document', so it must invent one — the constraint becomes a fabrication requirement. Cross-field consistency (start after end, a total that isn't the sum of line items) and business rules (an amount outside any plausible range, an ID referring to nothing) are entirely unchecked. So: constrained decoding is a syntactic and structural guarantee, validation is a semantic one, and only the JSON-repair code is genuinely redundant."
+  },
+  "struct-005": {
+    "key_concepts": [
+      "required non-nullable fields force fabrication",
+      "nullable as a representable 'absent'",
+      "three-outcome success condition",
+      "per-field null-rate monitoring"
+    ],
+    "answer": "The schema is causing it. Under a strict required-field schema with constrained decoding, a field that is genuinely not present in the document has no legal representation — the model cannot emit 'absent', so it must emit some string, and it emits a plausible one. The schema has converted a missing value into a fabricated one, silently, and 'success' counts it. Restructure it three ways. First, make genuinely-optional fields nullable, with null explicitly documented as the value to use when the document doesn't contain the field, so 'absent' becomes representable rather than forbidden. Second, replace the two-outcome success condition with three: `ok` (parsed, on-schema, all required fields populated), `incomplete` (parsed and on-schema but a required field is null — a document problem, routes to human review, retrying will not help), and `failed` (did not parse or conform — a pipeline problem, worth a retry and an alert). Collapsing `incomplete` into `failed` produces phantom retry storms; collapsing it into `ok` is what finance is seeing. Third, monitor the null rate per field rather than the aggregate success rate: a field that jumps from 30% null to 80% overnight signals an upstream change and is invisible in a metric that counts those records as successes."
+  },
+  "struct-006": {
+    "key_concepts": [
+      "the contract is the schema, not the parse",
+      "valid JSON with a missing field",
+      "separating document problems from pipeline problems"
+    ],
+    "answer": "Because `json.loads` succeeding says only that the bytes were well-formed — it says nothing about the contract being satisfied. The specific failure it misses: a model that cannot find a field in the source will often just leave it out and emit flawless JSON without it. A success condition built on 'did it parse' accepts that half-filled record and passes it downstream looking complete. Replace it with a check against the schema — parsed AND every required field present AND types correct — and then split failure into two kinds that need different responses: a document problem (parsed and on-schema, but a required value is genuinely absent from the source) routes to human review and must never be retried, while a pipeline problem (did not parse or did not conform) is worth a bounded retry and an alert if the rate moves. Those three outcomes are the minimum; two is what produces both phantom retry storms and silent data loss."
   }
 }

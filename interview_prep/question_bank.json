@@ -1021,5 +1021,71 @@
     "follow_up": "When would you agree, and when would you insist on the canary anyway?",
     "grounded_in_real_incident": false,
     "source_note": null
+  },
+  {
+    "id": "struct-001",
+    "chapter": 7,
+    "category": "Structured outputs",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "A teammate's service parses JSON out of model responses with a try/except and a retry.",
+    "follow_up": "Your LLM sometimes returns malformed JSON that breaks your parser. What's the most reliable first fix, and why is it better than the alternatives?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "struct-002",
+    "chapter": 7,
+    "category": "Structured outputs",
+    "difficulty": "junior",
+    "format": "scenario_first",
+    "scenario": "You ask an LLM to return data as JSON. It usually works, but sometimes the response comes back wrapped in ```json fences, and sometimes with a sentence of preamble before the object.",
+    "follow_up": "What's the most reliable fix, and what class of malformation would that fix NOT handle?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "struct-003",
+    "chapter": 7,
+    "category": "Structured outputs",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #eng: \"added retries to the extraction service, error rate went 4% -> 0.9%. but ACME's tenant is still at 100% failure, every single request, 4 retries each. we're just paying 4x to fail now\"",
+    "follow_up": "What's different about ACME's traffic, and what would you ship instead?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "struct-004",
+    "chapter": 7,
+    "category": "Structured outputs",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "Your provider has just shipped schema-constrained output and you've enabled it.",
+    "follow_up": "A teammate wants to delete the downstream validation layer, since the API now guarantees the shape. What does that guarantee actually cover, and what does it not?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "struct-005",
+    "chapter": 7,
+    "category": "Structured outputs",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "An extraction pipeline pulls six fields from scanned invoices under a strict required-field schema. Extraction 'succeeds' on 98% of documents, but finance reports that supplier tax IDs are wrong on a meaningful fraction of records — and the wrong ones look completely plausible.",
+    "follow_up": "What is the schema itself doing to cause this, and how would you restructure it?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "struct-006",
+    "chapter": 7,
+    "category": "Structured outputs",
+    "difficulty": "senior",
+    "format": "question_first",
+    "scenario": "You're reviewing a design that treats 'the response parsed' as the success condition for a model-extraction step.",
+    "follow_up": "Why is that the wrong success condition, and what would you replace it with?",
+    "grounded_in_real_incident": false,
+    "source_note": null
   }
 ]
