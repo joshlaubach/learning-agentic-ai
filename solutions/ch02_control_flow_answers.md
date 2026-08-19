@@ -7,16 +7,14 @@ diagnosis exercise and architectural tradeoff questions from memory.
 
 ## Cold diagnosis exercise
 
-**Symptom 1:** "An agent keeps calling the same tool over and over, and every response looks
-identical."
+### 1. An agent keeps calling the same tool over and over, and every response looks identical.
 
 Diagnosis: a loop. The observation is byte-identical every time, which is exactly what a
 straight-line loop looks like, and it's this chapter's break-it #1 (the bait-tool scenario).
 A duplicate-observation check (Chapter 1) or a max-iteration guard (this chapter) both catch
 this, because the repeated signal is an exact match you can hash and compare directly.
 
-**Symptom 2:** "Two agents keep sending each other slightly different messages, but neither
-ever makes progress; the conversation just keeps going."
+### 2. Two agents keep sending each other slightly different messages, but neither ever makes progress.
 
 Diagnosis: a cycle. The tell is "slightly different messages": if it were a loop, the
 messages would repeat verbatim. A cycle involves paraphrasing or alternating speakers, so a
@@ -26,8 +24,7 @@ needs a detector that tolerates near-duplicates, using string similarity or embe
 distance, comparing each party's messages to their own prior messages rather than just to the
 immediately preceding line.
 
-**Symptom 3:** "Adding a second reviewer step made latency worse, but the two reviewers
-always agree."
+### 3. Adding a second reviewer step made latency worse, but the two reviewers always agree.
 
 Diagnosis: an unnecessary or redundant hop. Nothing is stuck and nothing is malformed;
 latency simply went up with zero corresponding change in outcome. The diagnostic signature is
@@ -36,8 +33,7 @@ adding real value by catching something the first missed, and this would be a le
 design choice rather than a bug. Fix it with a latency/value-add profiler, not a loop or
 cycle guard; neither of those tools is the right instrument for this failure mode.
 
-**Symptom 4:** "After adding a subagent, the orchestrator's context ballooned in size and its
-next decision got noticeably worse."
+### 4. After adding a subagent, the orchestrator's context ballooned and its next decision got worse.
 
 Diagnosis: a leaky subagent. The signature is a context-size spike correlated with a specific
 architectural change (adding a subagent), plus a downstream quality regression: not a stuck
@@ -50,7 +46,7 @@ first place.
 
 ## Architectural tradeoff questions
 
-### 1. When is adding more agents actually a bad architectural decision?
+### 5. When is adding more agents actually a bad architectural decision?
 
 Most often: when the task doesn't actually decompose into independent, verifiable sub-steps.
 If a single well-prompted agent with the right tools could do the whole thing in one pass,
@@ -72,7 +68,7 @@ for in latency and cost. It's worth it exactly when the quality gain is real and
 not by default, and not because multi-agent architectures sound like the more sophisticated
 answer.
 
-### 2. What's the actual difference between a subagent and just calling another agent?
+### 6. What's the actual difference between a subagent and just calling another agent?
 
 Context isolation, specifically, not just "there are two agents involved now." When Bob in
 this chapter calls his subagent, the subagent starts from a completely fresh context that
@@ -85,7 +81,7 @@ chapter's break-it #4 is exactly what happens when that boundary is skipped). Th
 test: if agent A's full internal reasoning trace ends up inside agent B's context by default,
 A isn't functioning as a subagent to B, no matter what you call it.
 
-### 3. When would you reach for fan-out instead of a persistent agent pool?
+### 7. When would you reach for fan-out instead of a persistent agent pool?
 
 Fan-out, meaning dispatching multiple independent subagents in parallel for one task and then
 collecting their results, is the right call when the work is genuinely parallelizable and
