@@ -767,5 +767,59 @@
       "separating document problems from pipeline problems"
     ],
     "answer": "Because `json.loads` succeeding says only that the bytes were well-formed — it says nothing about the contract being satisfied. The specific failure it misses: a model that cannot find a field in the source will often just leave it out and emit flawless JSON without it. A success condition built on 'did it parse' accepts that half-filled record and passes it downstream looking complete. Replace it with a check against the schema — parsed AND every required field present AND types correct — and then split failure into two kinds that need different responses: a document problem (parsed and on-schema, but a required value is genuinely absent from the source) routes to human review and must never be retried, while a pipeline problem (did not parse or did not conform) is worth a bounded retry and an alert if the rate moves. Those three outcomes are the minimum; two is what produces both phantom retry storms and silent data loss."
+  },
+  "retr-001": {
+    "key_concepts": [
+      "lexical/sparse index alongside dense",
+      "identifiers have no learned representation",
+      "tokenization must preserve them",
+      "fine-tuning cannot generalise to new IDs"
+    ],
+    "answer": "Add a lexical index -- BM25 or a plain inverted index -- and either route to it or fuse its results with the dense ones. The reason it works, and the reason fine-tuning does not, is that an arbitrary product code carries no distributional meaning: it was minted by a database, appeared in no training corpus, and the tokenizer splits it into fragments whose vectors reflect unrelated contexts. Its nearest neighbours are therefore other superficially-similar catalogue entries, which is the reported symptom. Worth stating the dividing line precisely, because it is sharper than 'embeddings are bad at exact matching': acronyms like GFCI or ERV are real words that occur in text, and a dense retriever handles them fine -- measured, they rank #1. An arbitrary serial number ranks #15 of 20. The line is whether the string existed in the training distribution at all. Fine-tuning fails because there is no signal to learn (the SKU-to-product mapping is arbitrary) and because it cannot generalise -- every SKU added tomorrow is unseen again, so you would retrain on every catalogue update. Two implementation details separate a real answer from a recited one: the identifier must be in the INDEXED TEXT rather than only the record key, and the tokenizer must not strip digits or punctuation that the match depends on. If the query is recognisably an identifier, the cleanest design is a direct lookup with retrieval as fallback, not search at all."
+  },
+  "retr-002": {
+    "key_concepts": [
+      "fusion averages toward the weaker component",
+      "measure components separately",
+      "per-slice not aggregate",
+      "aggregate metrics hide opposing effects"
+    ],
+    "answer": "Most likely not a bug. Reciprocal-rank fusion is an averaging operation, and it only helps when both retrievers are individually competent AND fail on different queries. If one side is substantially weaker, fusion drags the strong retriever toward the weak one and the fused result lands below the better component alone. A freshly-added BM25 index next to a well-tuned embedding pipeline is exactly that situation -- default analyzers, no stopword handling, no field weighting. Check, in order: (1) each component's score ALONE on the same eval set, since the fused number is uninterpretable without both baselines -- the decision rule is whether fusion beats max(dense, lexical); (2) per-slice results rather than aggregate, splitting the eval set into identifier-bearing, paraphrase, and mixed queries, because an aggregate hides the entire effect when a gain on one slice cancels a loss on another; (3) the lexical side's basic health -- tokenization preserving identifiers, sensible analyzer, is it actually returning anything relevant; (4) the RRF constant k, though this is rarely the real problem. The framing to push back on is that hybrid is a free upgrade. It is a good default that has a precondition, and the only way to know which case you are in is to measure the components separately on your own corpus."
+  },
+  "retr-003": {
+    "key_concepts": [
+      "boundary splits",
+      "step smaller than window width",
+      "index size cost",
+      "overlap vs. raising k"
+    ],
+    "answer": "Overlap buys recall against facts that straddle a chunk boundary. Cutting at a fixed boundary and moving on means any fact spanning that point is in neither chunk in one piece -- retrieve either and you get half of it. Sliding the window by less than its own width means the tail of each chunk repeats at the head of the next, so any span shorter than the overlap sits intact inside at least one chunk. It costs index size, and the cost is quantifiable: halving the step roughly doubles the chunk count, and every extra chunk is another vector to embed, store, index, and search. Measured on a 200-character chunk, going from no overlap to 160 characters of overlap took boundary-split recovery from under half to over 95% while the index grew about 3.5x. It also costs some precision -- the same sentence now lives in several chunks, so top-k can fill with near-duplicate passages. Worth adding that overlap is one of two fixes for the same failure: raising k also recovers a split fact, by handing the generator both halves. Overlap pays once in storage at index time; k pays on every query in context window. In practice you tune both, and raising overlap can let you lower k."
+  },
+  "retr-004": {
+    "key_concepts": [
+      "fact split across a chunk boundary",
+      "overlap at index time",
+      "raise k at query time",
+      "different costs"
+    ],
+    "answer": "Suspect a chunk boundary splitting the entity from its attribute. If chunking cuts at a fixed size with no overlap, a sentence pairing a name with a date can land with the name at the end of one chunk and the date at the start of the next; retrieval returns one, and the generator answers with the half it can see. The consistency across many questions is the tell -- a one-off would suggest a retrieval miss, a systematic half-answer suggests ingestion. Two fixes, with different costs. Index time: add overlap, so each chunk repeats the previous chunk's tail and any span shorter than the overlap survives intact. Costs storage, roughly doubling the chunk count as you halve the step. Query time: raise k, so both halves are retrieved and the generator reassembles them. Costs context window on every single query, and relies on the generator actually combining them. Overlap pays once, k pays forever, but k also helps failures overlap can't fix. Before either, confirm the diagnosis by looking at the retrieved chunks for a failing query -- if the date is simply absent from the corpus, neither fix applies. Semantic chunking on natural boundaries is the structural version of the same fix and is usually better than tuning overlap on a corpus that has real structure."
+  },
+  "retr-005": {
+    "key_concepts": [
+      "recall traded for latency",
+      "recall is a tunable knob",
+      "exact search is correct until scale forces otherwise",
+      "measure recall against exact ground truth"
+    ],
+    "answer": "ANN trades exact correctness for speed: it may miss some true nearest neighbours, in exchange for search time that grows far slower than linearly with corpus size. The critical framing is that recall is a TUNABLE KNOB, not a fixed loss. On HNSW, efSearch controls it directly -- measured on a 20,000-vector index, recall@10 runs 0.88 at efSearch=16 up to 0.999 at 128, while the speedup over exact search falls from about 14x to about 3x. You choose your point on that curve; you do not accept a mystery. How to decide: first ask whether you need it at all. Exact search is correct, simple, and fast enough for small corpora -- on a few thousand vectors a flat index beats ANN outright, because the graph traversal overhead exceeds the brute-force scan. Reaching for ANN before scale demands it is premature optimization that costs correctness. When you do need it, measure recall against exact search as ground truth on your own vectors (intrinsic dimensionality matters enormously -- real embeddings sit on a low-dimensional manifold where ANN does well, and uniformly random high-dimensional vectors are close to the worst case), then set the parameter to the cheapest setting meeting your recall target, and re-measure after any corpus change. Also weigh build time and memory, not just query latency: HNSW indexes are slow to build and hold the graph in RAM alongside the vectors."
+  },
+  "retr-006": {
+    "key_concepts": [
+      "post-filtering shrinks the result set",
+      "pre-filtering / filtered search",
+      "small tenants disproportionately hit",
+      "over-fetch as a stopgap"
+    ],
+    "answer": "This is post-filtering. Retrieval takes the global top 50 by similarity, and the tenant filter is applied afterwards -- so the caller asks for k results and receives however many of those 50 happened to belong to that tenant, which for a small tenant is frequently zero. The system is not 'finding nothing'; it is finding 50 things and discarding all of them. The asymmetry is the diagnostic signature: a tenant holding 30% of the corpus rarely notices, a tenant holding 0.1% sees it constantly, and the bug looks like a data problem rather than a retrieval one. The fix is pre-filtering (also called filtered search): restrict the candidate set to the tenant's vectors BEFORE the nearest-neighbour scan, so top-k is k results from within the eligible set by construction. Most production vector stores support this natively via metadata filters or per-tenant namespaces/partitions; with a per-tenant index or namespace the filter becomes routing and the problem disappears entirely. Two caveats worth raising. Naive pre-filtering against an ANN graph can degrade recall, because the graph's connectivity was built over all vectors and aggressive filtering can strand the traversal -- which is why engines implement filtered search specially rather than just masking results. And over-fetching (retrieve 500, then filter) is a legitimate stopgap but not a fix: it shifts the failure threshold rather than removing it, and the smallest tenant will eventually fall through again."
   }
 }

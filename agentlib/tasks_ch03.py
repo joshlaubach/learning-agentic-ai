@@ -256,3 +256,222 @@ def _m9(f):
 
 
 task("ch03-mrr", _ref_mrr, [_m1, _m2, _m3, _m4, _m5, _m6, _m7, _m8, _m9])
+
+
+# --- ch03-chunk-overlap ---
+
+
+def _ref_overlap():
+    from solutions.reference.ch03 import chunk_with_overlap
+
+    return chunk_with_overlap
+
+
+_LOREM = "".join(f"sentence number {i} carries one fact. " for i in range(40))
+
+
+def _o1(f):
+    """overlap=0 reproduces plain fixed-size chunking"""
+    got = f(_LOREM, 100, 0)
+    expected = [_LOREM[i : i + 100] for i in range(0, len(_LOREM), 100)]
+    assert got == expected, (
+        f"with no overlap this has to behave exactly like the fixed-size chunker it "
+        f"replaces; got {len(got)} chunks, expected {len(expected)}"
+    )
+
+
+def _o2(f):
+    """consecutive chunks share exactly `overlap` characters"""
+    chunks = f(_LOREM, 120, 30)
+    for a, b in zip(chunks, chunks[1:]):
+        assert a[-30:] == b[:30], (
+            "the tail of each chunk must be the head of the next, by exactly `overlap` "
+            f"characters. Got tail {a[-30:]!r} then head {b[:30]!r}"
+        )
+
+
+def _o3(f):
+    """no character is lost"""
+    for size, overlap in ((100, 0), (100, 25), (250, 100), (60, 45)):
+        joined = "".join(f(_LOREM, size, overlap))
+        for probe in ("sentence number 0 ", "sentence number 21 ", "sentence number 39 "):
+            assert probe in joined, (
+                f"chunking dropped {probe!r} at size={size}, overlap={overlap}. Advancing by "
+                "`size` while slicing `size - overlap` silently deletes text between chunks, "
+                "which is far worse than the boundary problem overlap is meant to solve."
+            )
+
+
+def _o4(f):
+    """the tail of the document survives"""
+    text = "A" * 250 + "ZEBRA"
+    assert any("ZEBRA" in c for c in f(text, 100, 20)), (
+        "a loop that stops once the next start passes len(text) can drop the final partial "
+        "chunk, so the end of every document silently becomes unretrievable"
+    )
+
+
+def _o5(f):
+    """more overlap means more chunks"""
+    counts = [len(f(_LOREM, 150, o)) for o in (0, 30, 60, 90)]
+    assert counts == sorted(counts), (
+        f"shrinking the step has to produce at least as many chunks; got {counts}"
+    )
+    assert counts[-1] > counts[0], (
+        f"and strictly more at the extremes -- that growth is the storage cost overlap "
+        f"buys you. Got {counts}"
+    )
+
+
+def _o6(f):
+    """overlap >= chunk_size is rejected"""
+    for bad in (100, 150):
+        try:
+            f(_LOREM, 100, bad)
+        except ValueError:
+            continue
+        raise AssertionError(
+            f"overlap={bad} with chunk_size=100 means a step of zero or less, so the loop "
+            "never advances. Raise ValueError rather than hanging or returning garbage."
+        )
+
+
+def _o7(f):
+    """text shorter than one chunk comes back as a single chunk"""
+    got = f("short document", 100, 20)
+    assert got == ["short document"], f"expected one chunk back unchanged; got {got!r}"
+
+
+def _o8(f):
+    """empty input produces no chunks"""
+    assert f("", 100, 20) == [], "nothing in, nothing out"
+
+
+task(
+    "ch03-chunk-overlap",
+    _ref_overlap,
+    [_o1, _o2, _o3, _o4, _o5, _o6, _o7, _o8],
+)
+
+
+# --- ch03-bm25 ---
+
+
+def _ref_bm25():
+    from solutions.reference.ch03 import bm25_scores
+
+    return bm25_scores
+
+
+def _docs(*texts):
+    return [{"doc_id": f"d{i}", "text": t} for i, t in enumerate(texts)]
+
+
+def _rank(f, query, docs, **kw):
+    scores = f(query, docs, **kw)
+    return [d for d, _ in sorted(scores.items(), key=lambda p: -p[1])]
+
+
+def _b1(f):
+    """a term present in one document only"""
+    docs = _docs("the reactor reached criticality", "a portable cooling appliance", "foil tape")
+    scores = f("criticality", docs)
+    assert scores["d0"] > 0, f"d0 contains the term; it should score above zero. Got {scores}"
+    assert scores["d1"] == 0 and scores["d2"] == 0, (
+        f"documents with none of the query terms score zero, got {scores}"
+    )
+
+
+def _b2(f):
+    """a term in every document carries almost no signal"""
+    docs = _docs("water heater unit", "water cooling unit", "water filter unit")
+    scores = f("water", docs)
+    assert max(scores.values()) < 0.2, (
+        "IDF is the point of the formula: a term appearing in every document distinguishes "
+        f"nothing and must score near zero. Got {scores}"
+    )
+
+
+def _b3(f):
+    """term frequency saturates"""
+    docs = _docs("alpha " * 1 + "filler " * 20, "alpha " * 12 + "filler " * 20, "beta")
+    scores = f("alpha", docs)
+    ratio = scores["d1"] / scores["d0"]
+    assert ratio < 3.0, (
+        "this is what separates BM25 from raw TF-IDF. Twelve occurrences is not twelve times "
+        "more relevant than one -- the k1 term makes the contribution saturate, so a keyword "
+        f"stuffed page cannot dominate. The ratio here is {ratio:.1f}x, which looks linear."
+    )
+    assert scores["d1"] > scores["d0"], (
+        f"more occurrences should still score higher, just sub-linearly. Got {scores}"
+    )
+
+
+def _b4(f):
+    """long documents are normalized"""
+    short = "reactor criticality"
+    long = "reactor criticality " + "unrelated padding text " * 40
+    docs = _docs(short, long)
+    scores = f("reactor criticality", docs)
+    assert scores["d0"] > scores["d1"], (
+        "both documents contain the query terms exactly once, but the second buries them in "
+        "800 words of padding. The b parameter penalises length so a sprawling document "
+        f"cannot win on volume alone. Got {scores}"
+    )
+
+
+def _b5(f):
+    """b=0 turns length normalization off"""
+    docs = _docs("reactor criticality", "reactor criticality " + "padding " * 40)
+    off = f("reactor criticality", docs, b=0.0)
+    assert abs(off["d0"] - off["d1"]) < 1e-9, (
+        f"with b=0 document length must stop mattering entirely; got {off}"
+    )
+
+
+def _b6(f):
+    """an exact identifier retrieves its own document"""
+    from agentlib.retrieval_lab import CATALOG_DOCS, IDENTIFIER_QUERIES
+
+    docs = list(CATALOG_DOCS)
+    for query, gold in IDENTIFIER_QUERIES:
+        top = _rank(f, query, docs)[0]
+        assert top == gold, (
+            f"{query!r} should retrieve {gold} first -- this is the case lexical retrieval "
+            f"exists for, and the one a semantic model cannot learn. Got {top}"
+        )
+
+
+def _b7(f):
+    """every document gets a score, including zeros"""
+    docs = _docs("alpha", "beta", "gamma")
+    scores = f("alpha", docs)
+    assert set(scores) == {"d0", "d1", "d2"}, (
+        f"return a score for every document keyed by doc_id, not just the matches; got "
+        f"{sorted(scores)}"
+    )
+
+
+def _b8(f):
+    """a query term absent from the whole corpus is harmless"""
+    docs = _docs("alpha one", "alpha two")
+    scores = f("alpha nonexistentterm", docs)
+    assert all(s > 0 for s in scores.values()), (
+        f"an unseen term contributes nothing and must not zero out or crash the rest of the "
+        f"query. Got {scores}"
+    )
+
+
+def _b9(f):
+    """the caller's documents are not modified"""
+    docs = _docs("alpha", "beta")
+    before = [dict(d) for d in docs]
+    f("alpha", docs)
+    assert docs == before, f"scoring must not mutate the input documents; they are now {docs}"
+
+
+task(
+    "ch03-bm25",
+    _ref_bm25,
+    [_b1, _b2, _b3, _b4, _b5, _b6, _b7, _b8, _b9],
+)

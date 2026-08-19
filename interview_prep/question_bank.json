@@ -1087,5 +1087,71 @@
     "follow_up": "Why is that the wrong success condition, and what would you replace it with?",
     "grounded_in_real_incident": false,
     "source_note": null
+  },
+  {
+    "id": "retr-001",
+    "chapter": 3,
+    "category": "Hybrid and lexical retrieval",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "Your RAG system uses dense vector search only. It answers general questions well, but keeps failing on queries containing exact product codes and internal acronyms.",
+    "follow_up": "What is the best fix, and why does it work when tuning the embedding model doesn't?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "retr-002",
+    "chapter": 3,
+    "category": "Hybrid and lexical retrieval",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #search: \"we added BM25 alongside the embeddings and fused with RRF like everyone recommends. aggregate MRR went DOWN. did we implement it wrong?\"",
+    "follow_up": "What would you check first, and what's the most likely explanation that isn't a bug?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "retr-003",
+    "chapter": 3,
+    "category": "Chunking strategy",
+    "difficulty": "junior",
+    "format": "question_first",
+    "scenario": "A teammate is setting up ingestion for a long-document corpus and asks why anyone would make chunks overlap.",
+    "follow_up": "What does overlap buy, and what does it cost?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "retr-004",
+    "chapter": 3,
+    "category": "Chunking strategy",
+    "difficulty": "mid",
+    "format": "scenario_first",
+    "scenario": "A RAG answer is consistently half-right: it gets the entity but not the date, across many different questions.",
+    "follow_up": "What ingestion-time cause would you suspect, and what are the two different fixes available?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "retr-005",
+    "chapter": 3,
+    "category": "Vector databases",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "You're reviewing a design that uses approximate nearest neighbour search in a vector database.",
+    "follow_up": "What is the trade being made, and how would you decide whether it's the right one for this system?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "retr-006",
+    "chapter": 3,
+    "category": "Vector databases",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "A multi-tenant RAG product filters results by tenant_id after retrieving the top 50 nearest neighbours. Users on smaller tenants report the system 'finds nothing' for queries that obviously have answers.",
+    "follow_up": "What's happening, and how would you restructure the retrieval?",
+    "grounded_in_real_incident": false,
+    "source_note": null
   }
 ]
