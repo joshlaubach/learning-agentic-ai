@@ -155,8 +155,9 @@ ch07-json-repair: 5/8 checks passed.
 Fix the function above and re-run this cell.
 ````
 
-There are **36 graded tasks and 304 assertion cases** across the nine chapters, distributed
-roughly two to six per chapter. They are adversarially tested: for every task, a plausible
+There are **38 graded tasks and 321 assertion cases** across the nine chapters, distributed
+roughly two to six per chapter (`python grade.py --count-cases` prints the current totals,
+which is the number to trust if this paragraph has drifted). They are adversarially tested: for every task, a plausible
 wrong answer is implemented in `tests/test_grader_catches_wrong_answers.py` and asserted to
 fail. A suite that any reasonable attempt passes teaches nothing, so each one has at least one
 case aimed at a specific mistake — not a typo or an empty function, but a version that looks
@@ -222,7 +223,7 @@ before concluding that a failing chapter is your fault.
 |---|---------|------|-----------------|
 | 1 | [Fundamentals of AI Agents](curriculum/01_fundamentals.ipynb) | ~6 hrs | Chatbot vs. workflow vs. agent, ReAct, a minimal agent loop built from scratch, and the one-time provider/API-key/spend-limit setup reused for the rest of the course |
 | 2 | [Agent Control Flow](curriculum/02_control_flow.ipynb) | ~8 hrs | ReAct vs. plan-and-execute, a 3-agent Jack/Bob/Mike pipeline, subagents and context isolation, loops vs. cycles vs. unnecessary hops vs. leaky subagents |
-| 3 | [RAG and Retrieval Evaluation](curriculum/03_rag_evaluation.ipynb) | ~8 hrs | TF-IDF vs. embeddings, precision/recall/MRR, a real SQuAD-based retrieval pipeline, chunking a messy real-world corpus, five retrieval/generation failure modes |
+| 3 | [RAG and Retrieval Evaluation](curriculum/03_rag_evaluation.ipynb) | ~8 hrs | TF-IDF vs. embeddings vs. BM25, precision/recall/MRR, a real SQuAD-based retrieval pipeline, chunking a messy real-world corpus (including what overlap buys and costs), why exact identifiers defeat semantic search, five retrieval/generation failure modes |
 | 4 | [Production Reliability](curriculum/04_production_reliability.ipynb) | ~7 hrs | Stale caches, retries with backoff and jitter, circuit breakers, real rate-limit handling against a live API |
 | 5 | [Cost, Performance, and Model Selection](curriculum/05_cost_performance_model_selection.ipynb) | ~8 hrs | Token economics, latency decomposition, model routing, and a conceptual (no-GPU) tour of fine-tuning, LoRA/QLoRA, and RLHF's role in agent development |
 | 6 | [Security and Safeguards](curriculum/06_security_safeguards.ipynb) | ~7 hrs | Real, working prompt-injection payloads against your own mock system, least-privilege scoping, output filtering, defense in depth |
@@ -245,7 +246,7 @@ Unlike the numbered chapters, [`interview_prep/`](interview_prep/) is meant to b
 repeatedly (for example, the week before an actual interview), independent of working through
 the notebooks in order:
 
-- `question_bank.json`: a tagged bank of 99 scenario/follow-up interview questions across
+- `question_bank.json`: a tagged bank of 105 scenario/follow-up interview questions across
   all 9 chapters, none scraped from any interview-question site.
 - `mock_interview.ipynb`: a randomized, timed, cross-chapter mock interview with branching
   follow-ups based on your typed answers.
