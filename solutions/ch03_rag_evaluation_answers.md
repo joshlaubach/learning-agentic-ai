@@ -81,3 +81,119 @@ it less likely to make things up, but there's no built-in mechanism that guarant
 says things the source material actually supports. That enforcement, checking that the answer
 is actually traceable back to what was retrieved, has to be built and checked deliberately. It
 doesn't come free just because retrieval happened.
+
+---
+
+## 7. Cold diagnosis: exact part numbers return neighbours, not the part
+
+**What's wrong:** the pipeline is dense-only, and an arbitrary part number is the one kind of
+string a dense retriever structurally cannot handle.
+
+An embedding model places text in a space it learned from a training corpus. `SKU-6690` was
+minted by a database. It appeared in no training corpus, carries no distributional meaning,
+and the tokenizer breaks it into fragments (`sku`, `66`, `90`) whose vectors reflect other
+contexts entirely. The nearest neighbours of that improvised vector are other catalogue
+entries that look superficially similar — which is exactly the reported symptom: three
+plausible neighbours, not the part.
+
+Note the diagnosis is sharper than "embeddings are bad at exact match". This chapter measured
+the split directly: on the parts catalogue, dense retrieval ranks `MERV 13`, `GFCI`, `ERV` and
+`RO cartridge` at **#1**, the same as BM25. Those are *words* — they occur in real text, so the
+model has representations for them. It ranks `SKU-6690` at **#15 of 20**. The dividing line is
+not "exact vs. semantic", it is **whether the string existed in the training distribution at
+all.**
+
+**Why fine-tuning won't fix it:** fine-tuning adjusts the geometry of a learned space. There is
+no signal to learn from — the relationship between `SKU-6690` and a foam pipe sleeve is
+arbitrary and carries zero distributional evidence. Worse, it doesn't generalise: every new SKU
+added tomorrow is unseen again, so you would be retraining on every catalogue update to solve a
+problem that lookup solves for free. It is expensive, slow to roll back, and structurally
+incapable of covering new identifiers.
+
+**What to do instead:** add a lexical index (BM25 or plain inverted-index lookup) and route or
+fuse. Two details matter in the answer:
+
+- **The identifier has to be in the indexed text**, not only the record key. An identifier you
+  never indexed is a missing field, not a retrieval failure — and this is a real bug worth
+  checking for first, because it presents identically.
+- **Tokenization has to preserve it.** A tokenizer that strips punctuation and digits, or stems
+  aggressively, destroys the thing you are trying to match. `SKU-6690` must survive as
+  something searchable.
+
+If the query is *recognisably* an identifier (it matches a known SKU pattern), the cleanest
+design is not even search — detect the pattern and do a direct lookup, falling back to the
+retrieval path only when it misses.
+
+---
+
+## 8. Judgment call: overlap raised from 0 to 50%
+
+**What it cost:** index size, roughly doubled. Overlap works by sliding the window less than
+its own width, so halving the step halves the distance between chunk starts and roughly doubles
+the chunk count. Each extra chunk is another vector to embed, store, index, and search. This
+chapter's measurement shows the shape: going from overlap 0 to 160 on a 200-character chunk
+took the index from ~4.3 chunks per document to ~15.2, about 3.5x, while boundary-split
+recovery went from under half to over 95%.
+
+So the honest framing is that recall did not "go up" for free — it was bought, and the receipt
+is storage, embedding cost at ingest, and a slightly slower search over a bigger index.
+
+**What I'd want measured before shipping:**
+
+- **Which recall.** Recovery of boundary-split facts is the thing overlap actually fixes. If
+  the reported gain is on a metric that overlap shouldn't affect, something else changed too,
+  or the eval set is small enough to be noise.
+- **Precision, and duplicate results.** Overlapping chunks mean the same sentence lives in
+  several chunks, so top-k can fill with near-identical passages — real recall gain, worse
+  context. Check whether retrieved sets got more redundant, and whether deduplication at
+  retrieval time is now needed.
+- **Cost deltas**: index size, ingest time, p95 query latency.
+- **Whether `k` should now come down.** Overlap and a larger `k` are two fixes for the same
+  failure. If chunks are self-contained more often, you may be able to retrieve fewer of them
+  and win back context window — which is the compounding benefit people forget to claim.
+- **The eval set's provenance.** If the gain was measured on queries chosen after seeing the
+  failure, it is not evidence.
+
+50% is a common default and not obviously wrong. The reason to push back on "recall went up" as
+a shipping argument is that it is a one-sided report of a two-sided trade.
+
+---
+
+## 9. Design judgment: adding hybrid search to a dense-only pipeline
+
+**The argument for it:** lexical and semantic retrieval fail on genuinely different queries.
+Dense retrieval handles paraphrase, where the user's words and the document's words differ.
+Lexical retrieval handles exact strings — identifiers, error codes, rare proper nouns — that
+have no useful embedding. A pipeline with only one of them has a whole class of query it cannot
+serve, and on a mixed real workload that class is usually larger than anyone estimated. Fusing
+the two ranked lists (reciprocal-rank fusion is the standard default, and needs no score
+calibration between systems) covers both.
+
+**The precondition, and when it backfires:** fusion is an averaging operation. It helps when
+both retrievers are *individually competent* and fail *independently*. If one side is
+substantially weaker, fusion drags the strong retriever toward the weak one and the combined
+result is worse than the better component alone.
+
+That is not hypothetical — it is what happens in this chapter. The dense retriever here
+averages spaCy word vectors, which cannot compose meaning, so it loses to BM25 on paraphrase
+queries as well as identifier ones. Reciprocal-rank fusion of the two lands *below* BM25 alone.
+The same thing happens in production whenever a team bolts a poorly-tuned BM25 index onto a
+strong embedding pipeline and reports that "hybrid didn't help".
+
+**What I'd measure, before and after:**
+
+- **Per-slice, not aggregate.** Split the eval set by query type — identifier-bearing,
+  paraphrase, mixed — and report each separately. A single aggregate MRR hides the entire
+  effect, because hybrid's gain on one slice can cancel its loss on another.
+- **Each component alone, on the same set.** You cannot interpret the fused number without
+  both baselines. The decision rule is simple: if fusion does not beat `max(dense, lexical)`
+  on the slices you care about, you have a component-quality problem, not a fusion opportunity.
+- **The query mix itself**, from real logs. Hybrid's value is proportional to how much of your
+  traffic is the type your current retriever fails. If 2% of queries carry identifiers, this is
+  a small win; if 40% do, it is the whole ballgame.
+- **Latency and cost**, since you are now running two retrievers per query plus a fusion step.
+
+**The honest summary:** "add hybrid search" is good default advice and a bad substitute for
+measurement. The failure mode is not that fusion is wrong, it is that fusion is assumed to be
+free — and the only way to know which case you are in is to measure both components separately
+on your own corpus and query mix.

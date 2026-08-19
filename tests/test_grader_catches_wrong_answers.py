@@ -1392,3 +1392,143 @@ def test_ch07_constrained_decode_rejects_forgetting_to_advance_the_model():
         return json.loads("".join(emitted))
 
     _rejects("ch07-constrained-decode", wrong)
+
+
+# --- ch03-chunk-overlap ---
+
+
+def test_ch03_chunk_overlap_rejects_advancing_by_chunk_size():
+    """Slices `size` but steps `size`, so the overlap is never actually produced."""
+
+    def wrong(text, chunk_size=400, overlap=0):
+        if overlap >= chunk_size:
+            raise ValueError("overlap too large")
+        return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+    _rejects("ch03-chunk-overlap", wrong)
+    _accepts("ch03-chunk-overlap")
+
+
+def test_ch03_chunk_overlap_rejects_dropping_text_between_chunks():
+    """Steps by `size` but slices `size - overlap`, silently deleting text.
+
+    The chunk count and the overlap arithmetic both look plausible; the corpus just quietly
+    loses a slice between every pair of chunks.
+    """
+
+    def wrong(text, chunk_size=400, overlap=0):
+        if overlap >= chunk_size:
+            raise ValueError("overlap too large")
+        step = chunk_size
+        return [text[i : i + chunk_size - overlap] for i in range(0, len(text), step)]
+
+    _rejects("ch03-chunk-overlap", wrong)
+
+
+def test_ch03_chunk_overlap_rejects_losing_the_final_partial_chunk():
+    """Stops one step early, so the tail of every document becomes unretrievable."""
+
+    def wrong(text, chunk_size=400, overlap=0):
+        if overlap >= chunk_size:
+            raise ValueError("overlap too large")
+        if not text:
+            return []
+        step = chunk_size - overlap
+        out, start = [], 0
+        while start + chunk_size <= len(text):
+            out.append(text[start : start + chunk_size])
+            start += step
+        return out
+
+    _rejects("ch03-chunk-overlap", wrong)
+
+
+def test_ch03_chunk_overlap_rejects_hanging_on_overlap_equal_to_size():
+    """Never validates the step, so overlap == chunk_size means a step of zero."""
+
+    def wrong(text, chunk_size=400, overlap=0):
+        if not text:
+            return []
+        step = chunk_size - overlap
+        out, start = [], 0
+        # Bounded so the test cannot hang; the real bug is an infinite loop.
+        while start < len(text) and len(out) < 10_000:
+            out.append(text[start : start + chunk_size])
+            if start + chunk_size >= len(text):
+                break
+            start += step
+        return out
+
+    _rejects("ch03-chunk-overlap", wrong)
+
+
+# --- ch03-bm25 ---
+
+
+def test_ch03_bm25_rejects_linear_term_frequency():
+    """Raw tf-idf: correct-looking, and a keyword-stuffed document dominates it."""
+
+    def wrong(query, docs, k1=1.5, b=0.75):
+        import math
+        from collections import Counter
+
+        from agentlib.retrieval_lab import tokenize
+
+        corpus = [tokenize(d["text"]) for d in docs]
+        n = len(corpus)
+        if not n:
+            return {}
+        df = Counter(t for toks in corpus for t in set(toks))
+        out = {}
+        for doc, toks in zip(docs, corpus):
+            tf = Counter(toks)
+            out[doc["doc_id"]] = sum(
+                math.log(1 + (n - df[t] + 0.5) / (df[t] + 0.5)) * tf[t]
+                for t in tokenize(query)
+                if t in tf
+            )
+        return out
+
+    _rejects("ch03-bm25", wrong)
+    _accepts("ch03-bm25")
+
+
+def test_ch03_bm25_rejects_omitting_length_normalization():
+    """Saturates tf correctly but ignores b, so sprawling documents win on volume."""
+
+    def wrong(query, docs, k1=1.5, b=0.75):
+        import math
+        from collections import Counter
+
+        from agentlib.retrieval_lab import tokenize
+
+        corpus = [tokenize(d["text"]) for d in docs]
+        n = len(corpus)
+        if not n:
+            return {}
+        df = Counter(t for toks in corpus for t in set(toks))
+        out = {}
+        for doc, toks in zip(docs, corpus):
+            tf = Counter(toks)
+            out[doc["doc_id"]] = sum(
+                math.log(1 + (n - df[t] + 0.5) / (df[t] + 0.5))
+                * tf[t]
+                * (k1 + 1)
+                / (tf[t] + k1)
+                for t in tokenize(query)
+                if t in tf
+            )
+        return out
+
+    _rejects("ch03-bm25", wrong)
+
+
+def test_ch03_bm25_rejects_returning_only_the_matching_documents():
+    """Skips zero-scoring documents, so callers cannot tell 'no match' from 'not indexed'."""
+
+    def wrong(query, docs, k1=1.5, b=0.75):
+        from solutions.reference.ch03 import bm25_scores
+
+        return {k: v for k, v in bm25_scores(query, docs, k1, b).items() if v > 0}
+
+    _rejects("ch03-bm25", wrong)
