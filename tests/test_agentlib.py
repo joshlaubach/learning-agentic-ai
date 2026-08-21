@@ -630,3 +630,90 @@ def test_real_llm_brain_final_answer_without_tools(monkeypatch):
 
     assert actions == [{"action": "final_answer", "action_input": "Paris."}]
     assert model_calls == 1
+
+
+# --- self_check: the written drills ------------------------------------------------------
+
+
+def test_self_check_parses_every_chapter():
+    """All nine answer files yield numbered questions, whether headed at ## or ###."""
+    from agentlib import self_check
+
+    for chapter in range(1, 10):
+        d = self_check.drill(chapter)
+        assert d._bank, f"chapter {chapter} parsed no questions"
+        for number, (question, answer) in d._bank.items():
+            assert question.strip(), f"ch{chapter} q{number} has no question text"
+            assert len(answer.split()) > 20, f"ch{chapter} q{number} has a suspiciously short answer"
+
+
+def test_self_check_rejects_placeholder_and_stub_answers(capsys):
+    from agentlib import self_check
+
+    d = self_check.drill(1)
+    for bad in ("", "   ", "(Write your answer here.)", "TODO", "cap the iterations"):
+        d.attempt(1, bad)
+    assert 1 not in d._attempts, "placeholder and too-short answers must not be recorded"
+
+    real = " ".join(["word"] * 30)
+    d.attempt(1, real)
+    assert d._attempts[1] == real
+
+
+def test_self_check_withholds_the_answer_until_you_attempt(capsys):
+    """The reveal is the whole value; handing it over unprompted removes the exercise."""
+    from agentlib import self_check
+
+    d = self_check.drill(1)
+    d.check(2)
+    out = capsys.readouterr().out
+    assert "MODEL ANSWER" not in out, "check() leaked the model answer before any attempt"
+    assert "attempt() first" in out
+
+    d.attempt(2, " ".join(["word"] * 30))
+    d.check(2)
+    out = capsys.readouterr().out
+    assert "MODEL ANSWER" in out and "YOUR ANSWER" in out
+
+
+def test_self_check_reveal_is_an_explicit_escape_hatch(capsys):
+    from agentlib import self_check
+
+    self_check.drill(1).reveal(3)
+    out = capsys.readouterr().out
+    assert "MODEL ANSWER" in out, "reveal() is the deliberate way to see it without attempting"
+
+
+def test_self_check_rejects_an_unknown_question_number():
+    from agentlib import self_check
+
+    d = self_check.drill(1)
+    for call in (lambda: d.attempt(99, "x" * 200), lambda: d.check(99), lambda: d.reveal(99)):
+        try:
+            call()
+        except KeyError:
+            continue
+        raise AssertionError("an out-of-range question number should raise KeyError")
+
+
+def test_no_notebook_contains_a_model_answer():
+    """The drills read answers from solutions/ at runtime; none may be pasted into a notebook."""
+    import json as _json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    from agentlib import self_check
+
+    for chapter in range(1, 10):
+        d = self_check.drill(chapter)
+        nb_matches = sorted((root / "curriculum").glob(f"{chapter:02d}_*.ipynb"))
+        if not nb_matches:
+            continue
+        text = nb_matches[0].read_text()
+        for number, (_, answer) in d._bank.items():
+            # A distinctive run of the model answer, long enough not to collide by chance.
+            probe = " ".join(answer.split()[:12])
+            assert probe not in text, (
+                f"ch{chapter} q{number}'s model answer appears inside "
+                f"{nb_matches[0].name} -- it must only live in solutions/"
+            )
