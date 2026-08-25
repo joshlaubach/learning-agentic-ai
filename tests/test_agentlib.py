@@ -194,6 +194,47 @@ def test_evaluate_retrieval_aggregates_across_queries():
     )
     assert result["n_queries"] == 2
     assert result["mrr"] == 0.5  # q1 hits at rank 1 (mrr=1.0), q2 never hits (mrr=0.0)
+    # q1: precision 0.5, recall 1.0 -> f1 = 2/3. q2 misses entirely -> f1 = 0.
+    assert result["f1@k"] == pytest.approx((2 / 3) / 2)
+
+
+def test_evaluate_retrieval_averages_f1_per_query_not_f1_of_averages():
+    """A retriever precise on one query and thorough on a different one is not a balanced
+    retriever, and per-query F1 is what refuses to say otherwise."""
+    queries = [
+        {"query": "precise", "relevant_doc_ids": {"a", "b"}},
+        {"query": "thorough", "relevant_doc_ids": {"c"}},
+    ]
+
+    def retrieve_fn(query, k):
+        # "precise": one hit, nothing wrong shown -> precision 1.0, recall 0.5.
+        # "thorough": everything relevant found, one junk result alongside -> precision 0.5,
+        # recall 1.0.
+        return {"precise": ["a"], "thorough": ["c", "junk"]}[query]
+
+    result = eval_metrics.evaluate_retrieval(
+        queries,
+        retrieve_fn,
+        k=2,
+        precision_fn=ref_ch03.precision_at_k,
+        recall_fn=ref_ch03.recall_at_k,
+        mrr_fn=ref_ch03.mean_reciprocal_rank,
+    )
+    assert result["precision@k"] == 0.75
+    assert result["recall@k"] == 0.75
+    # Both queries score f1 = 2/3, so the average is 2/3. F1 of the two averages would be
+    # 0.75 -- the number that credits the pair with a balance neither query achieved.
+    assert result["f1@k"] == pytest.approx(2 / 3)
+
+
+def test_f1_at_k_balances_precision_and_recall():
+    assert eval_metrics.f1_at_k(1.0, 1.0) == 1.0
+    assert eval_metrics.f1_at_k(0.5, 0.5) == 0.5
+    # Harmonic, not arithmetic: a lopsided retriever is dragged toward the smaller number.
+    assert eval_metrics.f1_at_k(1.0, 0.02) == pytest.approx(2 * 0.02 / 1.02)
+    assert eval_metrics.f1_at_k(1.0, 0.02) < 0.5
+    # Both zero is undefined as a harmonic mean; the harness scores it 0 rather than raising.
+    assert eval_metrics.f1_at_k(0.0, 0.0) == 0.0
 
 
 def test_faithfulness_score_full_and_zero_support():
