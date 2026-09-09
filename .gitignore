@@ -43,3 +43,6 @@ Thumbs.db
 # Editors
 .vscode/
 .idea/
+
+# graphify knowledge graph (generated)
+graphify-out/
