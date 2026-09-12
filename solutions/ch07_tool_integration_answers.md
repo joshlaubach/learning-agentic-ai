@@ -251,3 +251,36 @@ that is null 30% of the time is a documented property of your corpus; the same f
 to 80% overnight is an upstream change — a new document template, a different scanner, a
 prompt edit — and it is invisible in an aggregate success metric that counts those records as
 successes.
+
+---
+
+## 9. Design judgment: every tool call gets logged, including arguments
+
+Your tool executor logs the full arguments dict for every tool call to a shared
+observability system. A team member adds a tool that accepts `{"endpoint": "...",
+"api_key": "..."}` in its arguments. What is wrong with this, what breaks it, and what is
+the right fix?
+
+**What is wrong.** The `api_key` value is now emitted into every log line, the log forwarder,
+the observability dashboard, any retention store, and any export or alert the system sends.
+This is secret leakage through logging — one of the most common ways credentials end up in
+places they were never meant to be. In practice it means: the secret is visible to anyone
+with log access, it outlives the key's intended scope (logs are often retained for weeks),
+and it propagates through whatever the log aggregator feeds (search indices, cold storage,
+alerting pipelines).
+
+**What breaks it.** The credential is in the wrong layer. Tool call arguments are part of the
+agent's observable surface; a value there is treated as data, not a secret. The agent
+framework, the grading suite, the tracing library — any tool that sees the arguments dict
+will see the key alongside it. Putting the credential in the arguments also means the model
+could, in principle, see it in a serialised context, which violates a basic secret-hygiene
+rule: the model should never need to know the key exists.
+
+**The right fix has two parts.** First, redesign the tool so it reads its credential from
+`os.environ` (or a secrets manager), not from call arguments. The executor calls the tool,
+the tool looks up its own credential; the arguments dict never carries it. Second, add a
+sanitisation step — something like `sanitize_tool_log` from this chapter's build — before
+any call record is written, as a defence-in-depth backstop for any credential-shaped field
+that slips through. The structural fix (keep credentials out of arguments) is the real
+solution; the sanitisation step is the last-resort catch.
+

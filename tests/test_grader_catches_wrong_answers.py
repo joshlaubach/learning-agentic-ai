@@ -767,6 +767,35 @@ def test_ch06_write_a_payload_rejects_text_the_brain_never_obeys():
     _rejects("ch06-write-a-payload", not_an_attack)
 
 
+def test_ch06_authorize_caller_rejects_approving_any_authenticated_caller():
+    """Plausible wrong answer: if the caller_id is in permissions at all, allow it. Auth is
+    done; ownership is not checked. User A gets data for User B's order on the first try."""
+
+    def wrong(caller_id, action, resource_id, permissions):
+        if caller_id in permissions:
+            return True, f"{caller_id} is authenticated; approved."
+        return False, f"Unknown caller: {caller_id!r}"
+
+    _rejects("ch06-authorize-caller", wrong)
+    _accepts("ch06-authorize-caller")
+
+
+def test_ch06_authorize_caller_rejects_treating_unknown_callers_as_users():
+    """Plausible wrong answer: a missing entry defaults to user role with no resources. An
+    attacker who supplies any caller_id that does not happen to exist gets a denial only
+    because they own nothing -- not because they are unknown."""
+
+    def wrong(caller_id, action, resource_id, permissions):
+        caller = permissions.get(caller_id, {"role": "user", "resources": []})
+        if caller["role"] == "admin":
+            return True, "admin"
+        if resource_id in caller.get("resources", []):
+            return True, "owned"
+        return False, f"{caller_id} does not own {resource_id}"
+
+    _rejects("ch06-authorize-caller", wrong)
+
+
 # --- Chapter 7 ---
 
 
@@ -874,6 +903,59 @@ def test_ch07_failure_classifier_rejects_conflating_missing_with_mistyped():
                 "detail": f"{validated.name} v{validated.version}"}
 
     _rejects("ch07-failure-classifier", wrong)
+
+
+def test_ch07_log_sanitize_rejects_mutating_the_original():
+    """Plausible wrong answer: delete credential keys in place. Every caller's copy of the
+    record now has missing fields -- the tool call that follows the log write will have no
+    API key to send."""
+
+    def wrong(call_record):
+        for k in list(call_record.keys()):
+            if re.search(r"key|token|secret|password|auth", k, re.IGNORECASE):
+                del call_record[k]
+        return call_record
+
+    _rejects("ch07-log-sanitize", wrong)
+    _accepts("ch07-log-sanitize")
+
+
+def test_ch07_log_sanitize_rejects_exact_name_matching():
+    """Plausible wrong answer: check only for the literal string 'api_key'. Misses
+    'secret_key', 'auth_header', 'access_token', and every future credential field that
+    does not happen to be spelled exactly right."""
+
+    def wrong(call_record):
+        result = {}
+        for k, v in call_record.items():
+            if isinstance(v, dict):
+                result[k] = wrong(v)
+            elif k == "api_key":
+                result[k] = "[REDACTED]"
+            else:
+                result[k] = v
+        return result
+
+    _rejects("ch07-log-sanitize", wrong)
+
+
+def test_ch07_log_sanitize_rejects_redacting_non_sensitive_fields():
+    """Plausible wrong answer: over-redact by matching too broadly (e.g. any field containing
+    a capital letter). The log is now unreadable; the call_record keys like 'package_name' or
+    'version' are gone and nobody can debug anything."""
+
+    def wrong(call_record):
+        result = {}
+        for k, v in call_record.items():
+            if isinstance(v, dict):
+                result[k] = wrong(v)
+            elif any(c.isupper() for c in k):
+                result[k] = "[REDACTED]"
+            else:
+                result[k] = v
+        return result
+
+    _rejects("ch07-log-sanitize", wrong)
 
 
 # --- Chapter 8 ---

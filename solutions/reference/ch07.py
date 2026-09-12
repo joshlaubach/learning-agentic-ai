@@ -122,6 +122,28 @@ def retry_until_valid(model, max_attempts: int = 4):
     return None, max_attempts
 
 
+import re as _re
+
+_SENSITIVE_KEY = _re.compile(r"key|token|secret|password|auth", _re.IGNORECASE)
+
+
+def sanitize_tool_log(call_record: dict) -> dict:
+    """Redact credential-bearing fields from a tool call record before logging.
+
+    Any field whose key contains 'key', 'token', 'secret', 'password', or 'auth'
+    (case-insensitive, substring match) has its value replaced with '[REDACTED]'.
+    Nested dicts are processed recursively. The original dict is never mutated."""
+    result = {}
+    for k, v in call_record.items():
+        if isinstance(v, dict):
+            result[k] = sanitize_tool_log(v)
+        elif _SENSITIVE_KEY.search(k):
+            result[k] = "[REDACTED]"
+        else:
+            result[k] = v
+    return result
+
+
 def constrained_decode(model, fields) -> dict:
     """Decode under a grammar mask: filter to legal tokens, then take the best survivor.
 

@@ -460,3 +460,83 @@ task(
     _ref_payload,
     [_w1, _w2, _w3, _w4, _w5, _w6, _w7, _w8],
 )
+
+
+# --- ch06-authorize-caller ---
+
+
+def _ref_auth():
+    from solutions.reference.ch06 import authorize_caller
+
+    return authorize_caller
+
+
+def _perms_admin():
+    return {"alice": {"role": "admin", "resources": []}}
+
+
+def _perms_user():
+    return {"bob": {"role": "user", "resources": ["ORD-1002"]}}
+
+
+def _a1(f):
+    """admin caller is authorized on any resource"""
+    ok, _ = f("alice", "issue_refund", "ORD-1002", _perms_admin())
+    assert ok is True, "admin role bypasses resource ownership check"
+
+
+def _a2(f):
+    """admin caller is authorized on a resource they don't explicitly own"""
+    ok, _ = f("alice", "get_order_status", "ORD-9999", _perms_admin())
+    assert ok is True, "admin role is not restricted to listed resources"
+
+
+def _a3(f):
+    """user caller authorized for their own resource"""
+    ok, _ = f("bob", "issue_refund", "ORD-1002", _perms_user())
+    assert ok is True, "a user may act on a resource they own"
+
+
+def _a4(f):
+    """user caller denied for another user's resource (confused-deputy)"""
+    ok, reason = f("bob", "issue_refund", "ORD-1001", _perms_user())
+    assert ok is False, (
+        "this is the confused-deputy failure: bob owns ORD-1002, not ORD-1001. "
+        "The agent is authorized to look up any order, but the caller is not."
+    )
+    assert "ORD-1001" in reason or "bob" in reason, (
+        f"the denial reason should name the caller or resource; got {reason!r}"
+    )
+
+
+def _a5(f):
+    """unknown caller is denied"""
+    ok, reason = f("eve", "issue_refund", "ORD-1002", _perms_admin())
+    assert ok is False, (
+        "an unknown caller supplies no proof of identity -- deny and say who was rejected"
+    )
+    assert "eve" in reason, f"name the unrecognised caller in the reason; got {reason!r}"
+
+
+def _a6(f):
+    """return type is (bool, str)"""
+    got = f("alice", "issue_refund", "ORD-1002", _perms_admin())
+    assert isinstance(got, tuple) and len(got) == 2, (
+        f"return (authorized, reason) as a 2-tuple; got {got!r}"
+    )
+    assert isinstance(got[0], bool) and isinstance(got[1], str), (
+        f"the verdict is a bool, the reason a string; got {got!r}"
+    )
+
+
+def _a7(f):
+    """permissions dict is not modified"""
+    import copy
+
+    perms = _perms_user()
+    snap = copy.deepcopy(perms)
+    f("bob", "issue_refund", "ORD-9999", perms)
+    assert perms == snap, "the authoritative permissions store must not be mutated by a check"
+
+
+task("ch06-authorize-caller", _ref_auth, [_a1, _a2, _a3, _a4, _a5, _a6, _a7])

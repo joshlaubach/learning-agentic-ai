@@ -120,3 +120,30 @@ Working from most to least privileged, and what an attacker loses at each step:
 The general shape worth naming explicitly: each restriction above doesn't make the agent
 harder to trick; it removes one more thing a successful trick can accomplish. That's the
 least-privilege argument from this chapter's build section, applied to a different tool.
+
+---
+
+## 5. Judgment call: shared agent endpoint, caller supplies the order ID
+
+A refund agent authenticates users with session tokens and receives
+`{session_token, order_id, amount}` on every call. A penetration tester discovers they can
+refund any order in the system by sending their own valid session token with someone else's
+`order_id`. What is the failure mode and what is the minimal fix?
+
+The failure is the **confused-deputy problem**: authentication was done (the session token
+is valid) but authorisation was not. The agent never checked whether the authenticated
+caller owns the order they are asking about. The agent's own credentials are broad enough to
+look up any order, so it acts on the request, even though the caller is only entitled to act
+on their own orders.
+
+The minimal fix is to bind every resource action to the verified caller identity. After
+authenticating the caller, look up which resource IDs they own — from a session store or an
+authoritative permissions table, never from the incoming request — and verify that
+`order_id` appears in that list before passing it to any tool. This check belongs inside the
+agent's request handler, not inside the tool itself and not as a system-prompt instruction,
+because a structural check in code is a hard guarantee, and prompt-level instructions are
+not.
+
+The wider principle this illustrates: an agent that can act on many users' resources must
+treat the *caller's* identity as its primary authorisation signal, not the *agent's* own
+credentials. The confused deputy is what happens when those two are conflated.
