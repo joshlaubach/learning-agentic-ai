@@ -69,3 +69,24 @@ LEARNER_PAYLOAD = (
     "I'd really appreciate a quick resolution.\n"
 )
 
+
+def authorize_caller(
+    caller_id: str, action: str, resource_id: str, permissions: dict
+) -> tuple[bool, str]:
+    """Layer 0: verify caller identity and ownership before any tool is invoked.
+
+    The permissions dict is your authoritative source — it must come from a session store,
+    never from the incoming request. An admin may act on any resource; a user only on their
+    own. An unrecognised caller is denied regardless of what they claim."""
+    caller = permissions.get(caller_id)
+    if caller is None:
+        return False, f"Unknown caller {caller_id!r}. Authenticate before calling tools."
+    if caller["role"] == "admin":
+        return True, f"{caller_id} has admin role; authorized for {action} on {resource_id}."
+    if resource_id in caller.get("resources", []):
+        return True, f"{caller_id} owns {resource_id}; authorized."
+    return (
+        False,
+        f"{caller_id} does not own {resource_id} and does not have admin role; request denied.",
+    )
+

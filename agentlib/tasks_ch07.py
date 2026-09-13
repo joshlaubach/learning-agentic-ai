@@ -565,3 +565,74 @@ def _c7(f):
 
 
 task("ch07-constrained-decode", _ref_constrained, [_c1, _c2, _c3, _c4, _c5, _c6, _c7])
+
+
+# --- ch07-log-sanitize ---
+
+
+def _ref_sanitize():
+    from solutions.reference.ch07 import sanitize_tool_log
+
+    return sanitize_tool_log
+
+
+def _l1(f):
+    """api_key field value is redacted"""
+    got = f({"tool": "lookup", "arguments": {"api_key": "sk-abc123"}})
+    assert got["arguments"]["api_key"] == "[REDACTED]", (
+        f"a field named 'api_key' carries a credential; got {got['arguments']['api_key']!r}"
+    )
+
+
+def _l2(f):
+    """access_token field value is redacted"""
+    got = f({"arguments": {"access_token": "tok-xyz", "endpoint": "https://api.example.com"}})
+    assert got["arguments"]["access_token"] == "[REDACTED]", (
+        "any field whose key contains 'token' must be redacted"
+    )
+
+
+def _l3(f):
+    """non-sensitive fields are preserved exactly"""
+    got = f({"tool": "lookup", "arguments": {"package_name": "requests", "version": "2.31"}})
+    assert got["arguments"]["package_name"] == "requests", (
+        "only credential-bearing fields are redacted; ordinary data fields must survive"
+    )
+    assert got["arguments"]["version"] == "2.31"
+
+
+def _l4(f):
+    """nested dicts are recursively sanitized"""
+    record = {"meta": {"auth_header": "Bearer tok", "request_id": "abc"}}
+    got = f(record)
+    assert got["meta"]["auth_header"] == "[REDACTED]", (
+        "the redaction applies wherever in the dict the credential-bearing key appears, "
+        "not only at the top level"
+    )
+    assert got["meta"]["request_id"] == "abc", "non-sensitive nested fields survive"
+
+
+def _l5(f):
+    """original dict is not mutated"""
+    import copy
+
+    record = {"arguments": {"api_key": "sk-abc", "package_name": "numpy"}}
+    snap = copy.deepcopy(record)
+    f(record)
+    assert record == snap, (
+        "return a new dict; mutating the caller's record would redact it in the agent's "
+        "context as well, making the key unavailable for the actual tool call"
+    )
+
+
+def _l6(f):
+    """partial key matches are caught (secret_key, auth_header, password_hash)"""
+    got = f({"arguments": {"secret_key": "x", "auth_header": "Bearer y", "password_hash": "z"}})
+    for field in ("secret_key", "auth_header", "password_hash"):
+        assert got["arguments"][field] == "[REDACTED]", (
+            f"'{field}' contains a sensitive substring and must be redacted; "
+            f"got {got['arguments'].get(field)!r}"
+        )
+
+
+task("ch07-log-sanitize", _ref_sanitize, [_l1, _l2, _l3, _l4, _l5, _l6])
