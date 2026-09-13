@@ -510,12 +510,15 @@ def _a4(f):
 
 
 def _a5(f):
-    """unknown caller is denied"""
+    """unknown caller is denied with a reason that identifies them as unknown (not just lacking resources)"""
     ok, reason = f("eve", "issue_refund", "ORD-1002", _perms_admin())
     assert ok is False, (
         "an unknown caller supplies no proof of identity -- deny and say who was rejected"
     )
     assert "eve" in reason, f"name the unrecognised caller in the reason; got {reason!r}"
+    assert any(w in reason.lower() for w in ("unknown", "authenticate", "not found", "unrecognized", "unrecognised")), (
+        f"reason must identify the caller as unknown, not just say they lack ownership; got {reason!r}"
+    )
 
 
 def _a6(f):
