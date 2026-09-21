@@ -230,3 +230,17 @@ would make you cut one of these layers." A candidate reciting a checklist will s
 answer either, while a candidate with real judgment will have a specific, scenario-grounded
 reason ready, the same way this file's studio answers tie every choice back to something
 particular about that studio's stakes, not a generic best-practices list.
+
+### 5. A data team says their catalog is complete. An engineer says the agent still can't reason about the data. Who's right?
+
+Both, in different senses. The catalog is probably complete for its designed purpose: it
+answers access questions (who can see this table, where did the data come from, who changed
+it and when). An agent reasoning about data needs something the catalog was never designed
+to provide: semantic meaning. What does "open" mean in this column's context? When two
+tables both have a "revenue" field, which one is the source of truth? How current is this
+number, and is that current enough for the decision being made? The engineer is right that
+the agent can't reason from catalog entries alone. The data team is right that the catalog
+is not broken. What's missing is a semantic layer: one agreed definition per business term,
+machine-readable, generated and maintained as core infrastructure rather than as a separate
+project written for humans in a wiki. The practical tell: if the definitions live in
+Confluence, they are written for humans and the agent cannot read them in any useful sense.
