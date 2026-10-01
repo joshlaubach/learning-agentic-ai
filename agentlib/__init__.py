@@ -11,4 +11,6 @@ up front. Each module below is a placeholder until the unit that implements it l
 - loop_guards.py   — Unit 4  (Chapter 3). Same inline-then-promoted pattern as tools.py.
 - synthetic_data.py — Unit 4 (Chapter 3).
 - eval_metrics.py  — Unit 4  (Chapter 3).
+- reliability.py   — Chapter 4's multi-step section. Measurement plumbing for pass^k reports,
+                      harness manifests, and gate audits; the policies themselves are graded builds.
 """
