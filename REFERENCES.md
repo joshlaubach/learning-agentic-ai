@@ -148,6 +148,38 @@ internal loop in this chapter's build section, not re-cited here.)
   jitter component of this chapter's `retry_with_backoff()` — the core insight verified here
   is that exponential backoff alone isn't sufficient; randomizing each client's retry
   schedule is what actually prevents a "thundering herd" of synchronized retries.
+- Yao, S., Shinn, N., Razavi, P., & Narasimhan, K. (2024). "τ-bench: A Benchmark for
+  Tool-Agent-User Interaction in Real-World Domains." arXiv:2406.12045. Source of pass^k, the
+  chance that all k trials of a task succeed, used in this chapter's `pass_hat_k` task. The
+  GPT-4o figures quoted in the chapter (about 61% at one try, about 25% at eight on the retail
+  domain) come from the paper's headline results as summarised in the sources searched on
+  2026-10-01; re-check them against the paper before relying on them.
+- Chen, M., et al. (2021). "Evaluating Large Language Models Trained on Code." arXiv:2107.03374.
+  Introduces the unbiased pass@k estimator, which `agentlib.reliability.pass_at_k` implements
+  for contrast with pass^k.
+- Madaan, A., et al. (2023). "Self-Refine: Iterative Refinement with Self-Feedback." NeurIPS
+  2023. arXiv:2303.17651. The generate, critique, regenerate loop behind this chapter's
+  `refine` task.
+- Huang, J., et al. (2024). "Large Language Models Cannot Self-Correct Reasoning Yet." ICLR
+  2024. arXiv:2310.01798. Why `refine` accepts a draft only on an outside verifier's say-so:
+  without external feedback, self-correction often fails to help and can degrade correct
+  answers.
+- Cemri, M., et al. (2025). "Why Do Multi-Agent LLM Systems Fail?" arXiv:2503.13657. The MAST
+  failure taxonomy. The category shares quoted in the chapter (roughly 42% specification and
+  design, 37% inter-agent misalignment, 21% verification and termination) come from secondary
+  summaries retrieved on 2026-10-01 because the paper itself could not be opened then; verify
+  them against the paper's current version. Their sub-category figures do not sum to the
+  category totals in those summaries, so the chapter quotes categories only.
+- Kapoor, S., et al. (2024). "AI Agents That Matter." arXiv:2407.01502, and Kapoor, S., et al.
+  (2025). "Holistic Agent Leaderboard: The Missing Infrastructure for AI Agent Evaluation."
+  arXiv:2510.11977. Support for reporting cost and scaffold alongside accuracy, which is what
+  this chapter's harness manifest and fingerprint are for.
+- Anthropic (2024). "Building effective agents."
+  https://www.anthropic.com/engineering/building-effective-agents. Ground truth from the
+  environment at each step, human checkpoints, and stopping conditions for agent loops.
+- Stripe API docs. "Error handling," retry behavior and idempotency keys.
+  https://docs.stripe.com/error-handling#retries. Why a retried irreversible action needs an
+  idempotency key (this chapter's gate discussion).
 
 ## Chapter 5: Cost, Performance, and Model Selection
 
