@@ -15,6 +15,7 @@ import agentlib
 import agentlib.eval_metrics as eval_metrics
 import agentlib.llm_client as llm_client
 import agentlib.loop_guards
+import agentlib.reliability as reliability
 import agentlib.synthetic_data as synthetic_data
 import agentlib.tools
 import agentlib.tracing
@@ -758,3 +759,169 @@ def test_no_notebook_contains_a_model_answer():
                 f"ch{chapter} q{number}'s model answer appears inside "
                 f"{nb_matches[0].name} -- it must only live in solutions/"
             )
+
+
+# --- agentlib.reliability ----------------------------------------------------------------
+
+
+def test_pass_at_k_known_values():
+    # n=4 trials, 3 passed. pass@1 is the plain success rate; with k=n any success counts.
+    results = {"a": [True, True, True, False]}
+    assert reliability.pass_at_k(results, 1) == pytest.approx(0.75)
+    assert reliability.pass_at_k(results, 4) == pytest.approx(1.0)
+    # One task that always works, one that never does: half the tasks are ever solved.
+    mixed = {"a": [True, False], "b": [False, False]}
+    assert reliability.pass_at_k(mixed, 2) == pytest.approx(0.5)
+
+
+@pytest.mark.parametrize("results,k", [({}, 1), ({"a": [True]}, 0), ({"a": [True, False]}, 3)])
+def test_pass_at_k_rejects_inputs_it_cannot_estimate(results, k):
+    with pytest.raises(ValueError):
+        reliability.pass_at_k(results, k)
+
+
+def test_run_trials_records_a_crash_as_a_failed_trial_not_a_missing_one():
+    def agent(task):
+        if task == "boom":
+            raise RuntimeError("step 14 exploded")
+        return {"success": True, "cost": 2, "steps": 3}
+
+    runs = reliability.run_trials(agent, ["ok", "boom"], 3)
+    assert [len(runs[t]) for t in ("ok", "boom")] == [3, 3]
+    assert all(o["success"] for o in runs["ok"])
+    assert all(not o["success"] and "step 14 exploded" in o["error"] for o in runs["boom"])
+    assert runs["ok"][0] == {"success": True, "cost": 2.0, "steps": 3, "harm": False}
+
+
+def test_run_trials_resets_state_before_every_trial():
+    state = {"cache": 0, "resets": 0}
+
+    def reset():
+        state["cache"] = 0
+        state["resets"] += 1
+
+    def agent(task):
+        state["cache"] += 1  # leaks between trials unless reset
+        return {"success": state["cache"] == 1}
+
+    runs = reliability.run_trials(agent, ["t1", "t2"], 3, reset=reset)
+    assert state["resets"] == 6
+    assert all(o["success"] for outcomes in runs.values() for o in outcomes)
+    leaky = reliability.run_trials(agent, ["t1"], 3)
+    assert [o["success"] for o in leaky["t1"]] == [False, False, False]
+
+
+def test_run_trials_rejects_bad_n_and_bad_agent_return():
+    with pytest.raises(ValueError):
+        reliability.run_trials(lambda t: {"success": True}, ["a"], 0)
+    with pytest.raises(TypeError):
+        reliability.run_trials(lambda t: True, ["a"], 1)
+
+
+def _simple_pass_hat_k(results, k):
+    from math import comb
+
+    return sum(comb(sum(t), k) / comb(len(t), k) for t in results.values()) / len(results)
+
+
+def test_reliability_report_calls_the_functions_it_is_given_and_skips_unusable_ks():
+    runs = {
+        "a": [{"success": True, "cost": 1.0, "steps": 2, "harm": False}] * 4,
+        "b": [
+            {"success": s, "cost": 3.0, "steps": 2, "harm": h}
+            for s, h in [(True, False), (False, True), (False, False), (True, False)]
+        ],
+    }
+    seen = {}
+
+    def spy_pass_hat_k(results, k):
+        seen.setdefault("k", []).append(k)
+        return _simple_pass_hat_k(results, k)
+
+    def spy_fingerprint(manifest):
+        seen["manifest"] = manifest
+        return "abc123def456"
+
+    manifest = reliability.default_manifest(model="m", budgets={"max_steps": 20})
+    report = reliability.reliability_report(
+        runs, manifest, [1, 2, 4, 8], pass_hat_k=spy_pass_hat_k, fingerprint=spy_fingerprint
+    )
+    assert seen["k"] == [1, 2, 4] and seen["manifest"] is manifest
+    assert report["ks_skipped"] == [8] and sorted(report["pass^k"]) == [1, 2, 4]
+    assert report["pass^k"][4] == pytest.approx(0.5)  # a: 4/4 pass, b: 2/4 never all four
+    assert report["pass@k"][4] == pytest.approx(1.0)
+    assert report["harmful_trials"] == 1 and report["crashed_trials"] == 0
+    assert report["cost"]["per_trial"] == pytest.approx(2.0)
+    assert report["cost"]["per_success"] == pytest.approx(16.0 / 6)
+    assert report["manifest_fingerprint"] == "abc123def456"
+    assert "context_policy" in report["undisclosed"] and "model" not in report["undisclosed"]
+    text = reliability.render_report(report)
+    assert "abc123def456" in text and "undisclosed" in text and "skipped" in text
+
+
+def test_reliability_report_with_no_successes_has_no_cost_per_success():
+    runs = {"a": [{"success": False, "cost": 1.0, "steps": 1, "harm": False}] * 2}
+    report = reliability.reliability_report(
+        runs, reliability.default_manifest(), [1], pass_hat_k=_simple_pass_hat_k,
+        fingerprint=lambda m: "x",
+    )
+    assert report["cost"]["per_success"] is None
+    assert "n/a" in reliability.render_report(report)
+    with pytest.raises(ValueError):
+        reliability.reliability_report(
+            {}, {}, [1], pass_hat_k=_simple_pass_hat_k, fingerprint=lambda m: "x"
+        )
+
+
+def test_default_manifest_discloses_sampling_honestly_and_catches_typos():
+    m = reliability.default_manifest(model="claude-x")
+    assert set(m) == set(reliability.MANIFEST_FIELDS)
+    assert m["sampling"]["seed"] is None and m["sampling"]["seed_supported"] is False
+    assert reliability.missing_disclosures(m) == [
+        f for f in reliability.MANIFEST_FIELDS if f not in ("model", "sampling")
+    ]
+    with pytest.raises(KeyError):
+        reliability.default_manifest(budget={"max_steps": 5})  # typo for `budgets`
+
+
+def test_manifest_diff_walks_dicts_and_compares_lists_whole():
+    a = reliability.default_manifest(budgets={"max_steps": 20, "max_calls": 50}, tools=["a", "b"])
+    b = reliability.default_manifest(budgets={"max_steps": 30, "max_calls": 50}, tools=["b", "a"])
+    b["extra"] = 1
+    assert reliability.manifest_diff(a, b) == {
+        "budgets.max_steps": (20, 30),
+        "tools": (["a", "b"], ["b", "a"]),
+        "extra": ("<absent>", 1),
+    }
+    assert reliability.manifest_diff(a, a) == {}
+
+
+def test_quorum_gate_counts_abstentions_against_approval_and_denies_ties():
+    assert reliability.quorum_gate([True, True, False])[0] is True
+    assert reliability.quorum_gate([True, True, False, False])[0] is False  # 2-2 tie
+    assert reliability.quorum_gate([True, True, None, None, None])[0] is False  # 2 of 5
+    assert reliability.quorum_gate([True, True, None], required=3)[0] is False
+    assert reliability.quorum_gate([])[0] is False
+    with pytest.raises(ValueError):
+        reliability.quorum_gate([True, False], required=3)
+
+
+def test_audit_gate_exposes_a_rubber_stamp_and_a_gate_that_cries_wolf():
+    good, bad = ["ok1", "ok2"], ["bad1", "bad2", "bad3"]
+
+    rubber_stamp = reliability.audit_gate(lambda c: (True, "looks fine"), good, bad)
+    assert rubber_stamp["false_accepts"] == bad and rubber_stamp["false_rejects"] == []
+
+    paranoid = reliability.audit_gate(lambda c: (False, "no"), good, bad)
+    assert paranoid["false_rejects"] == good and paranoid["false_accepts"] == []
+
+    def crashes_on_bad(case):
+        if case.startswith("bad"):
+            raise RuntimeError("cannot parse")
+        return (True, "ok")
+
+    # An exception is a reject (fail closed), so crashing on bad input is not a false accept.
+    assert reliability.audit_gate(crashes_on_bad, good, bad)["false_accepts"] == []
+
+    # A bare truthy value is not a (True, reason) pair: it does not count as accepting.
+    assert reliability.audit_gate(lambda c: "yes", good, bad)["false_rejects"] == good
