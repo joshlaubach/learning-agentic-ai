@@ -1208,5 +1208,71 @@
     "follow_up": "What must each report disclose before the numbers can be compared?",
     "grounded_in_real_incident": false,
     "source_note": null
+  },
+  {
+    "id": "context-001",
+    "chapter": 8,
+    "category": "Data context design for agents",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "A data platform team shipped a governance layer after 18 months of work: permissions, masking, lineage records, audit logs, a data steward assigned to every table. When they connected an AI agent to it, the agent still couldn't confidently answer 'which revenue number should I use' or 'is this metric current enough to act on.'",
+    "follow_up": "Which of the team's 18 months of work was wasted, and which wasn't? What specific thing is missing?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "context-002",
+    "chapter": 8,
+    "category": "Data context design for agents",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "A data engineer is confident their catalog is complete: every table has an owner, a lineage record, a PII flag, and an ingestion timestamp.",
+    "follow_up": "What is the difference between a catalog that is complete for humans and one that is complete for an agent?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "context-003",
+    "chapter": 8,
+    "category": "Data context design for agents",
+    "difficulty": "senior",
+    "format": "stakeholder_quote",
+    "scenario": "\"We have lineage on every table, masking on every PII column, and an owner for every field. The governance checklist is done. Why does the agent keep hallucinating metric definitions and picking the wrong revenue table?\" -- a data platform lead in a post-mortem.",
+    "follow_up": "What does this symptom tell you about the root cause, and what would you build to fix it?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "context-004",
+    "chapter": 8,
+    "category": "Data context design for agents",
+    "difficulty": "mid",
+    "format": "slack_message",
+    "scenario": "Slack, #data-platform: \"why does the AI keep asking 'what does revenue mean here' -- that definition is in the wiki, we've had it documented for two years\"",
+    "follow_up": "How do you explain what's wrong and what needs to change?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "context-005",
+    "chapter": 8,
+    "category": "Data context design for agents",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "An agent has been granted read access to every table in the data warehouse. Access is not the bottleneck: it can query anything. It still hedges on every aggregation question, frequently asks for clarification on which table to use, and sometimes returns different numbers for the same metric on back-to-back runs.",
+    "follow_up": "What is causing this behavior, and what architectural layer is missing?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "context-006",
+    "chapter": 8,
+    "category": "Data context design for agents",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "A data team proposes building a semantic layer to give agents machine-readable business term definitions. An engineer pushes back: 'This is just another separate project. It'll be accurate for six months and then go stale the same way the wiki did.'",
+    "follow_up": "How do you design the semantic layer so the engineer's concern doesn't come true?",
+    "grounded_in_real_incident": false,
+    "source_note": null
   }
 ]

@@ -862,5 +862,51 @@
       "reproducibility"
     ],
     "answer": "The harness, not just the model: the exact model id and sampling settings, the prompt version, the context policy, the tools and their versions, the retry policy, the step, call, time, and cost budgets, and the verifications in front of each action. Add the number of tasks, the trials per task, k, and the cost per trial and per success. A short fingerprint of that manifest makes mismatches obvious, and a diff of two manifests shows what changed. Scaffolds alone can move both accuracy and cost, so differing numbers usually mean differing harnesses until the manifests prove otherwise."
+  },
+  "context-001": {
+    "key_concepts": [
+      "meaning vs. access",
+      "five mistakes",
+      "semantic layer"
+    ],
+    "answer": "None of the 18 months was wasted in the sense of being wrong — permissions, masking, lineage, and audit are real requirements. What's missing is a different layer entirely: semantic meaning the agent can read. The five mistakes collapse into one root cause: the governance layer was designed for human consumers. A human can read a wiki entry and understand what 'open' means. An agent cannot; it needs that definition embedded in the same system it queries, at query time, not in a separate document. What's missing is a semantic layer: one machine-readable definition per business term, generated and maintained as core infrastructure, not as a side project."
+  },
+  "context-002": {
+    "key_concepts": [
+      "access vs. meaning completeness",
+      "catalog designed for humans"
+    ],
+    "answer": "A catalog complete for humans answers the access questions: who owns this, where it came from, is it masked, when was it last updated. An agent needs those answers too, but it also needs something most catalogs don't carry: semantic meaning. What does this column's values actually represent in a business context? When two tables both contain a 'revenue' column, which is the authoritative source for a given type of question? How current does the data need to be for a specific decision? A human can look at a catalog entry, read the wiki, and construct that context. An agent has only what's queryable at runtime — if the meaning isn't there, the agent either guesses or asks, neither of which is what the team built the catalog to support."
+  },
+  "context-003": {
+    "key_concepts": [
+      "meaning vs. access",
+      "definitions written for humans not agents",
+      "semantic layer"
+    ],
+    "answer": "The symptom is a meaning problem, not an access or quality problem. The governance checklist — lineage, masking, ownership — answers who and where questions. The agent is failing on what questions: what does this metric mean in this context, what is the source of truth when two tables disagree. The fix is a semantic layer that the agent can query at runtime: one agreed definition per business term, machine-readable, embedded in the same data infrastructure rather than in a wiki a human writes and an agent cannot parse. The hallucination on metric definitions is the tell — that is the agent filling in meaning that should have been supplied by the data platform."
+  },
+  "context-004": {
+    "key_concepts": [
+      "wiki definitions are for humans",
+      "machine-readable semantics"
+    ],
+    "answer": "The wiki is the problem, not the agent. A wiki entry is written for human readers: a person can follow a link, read prose, and apply the definition to their context. An agent working at query time has none of that — it sees the data, the schema, and whatever metadata is queryable programmatically. A definition that lives in Confluence cannot be read by the agent in any useful sense, regardless of how complete it is. The fix is to move that definition into the data layer itself: a semantic layer that carries one agreed machine-readable definition per term, in the same lake the agent queries, so the definition travels with the data rather than existing in a separate document the agent cannot reach."
+  },
+  "context-005": {
+    "key_concepts": [
+      "access is not understanding",
+      "semantic layer",
+      "source of truth ambiguity"
+    ],
+    "answer": "Full read access means the agent can query anything; it does not mean the agent knows what to query or whether the result is trustworthy for a given purpose. The hedging and inconsistency point to missing semantic context: no machine-readable indication of which table is the authoritative source for each metric, no freshness signal the agent can evaluate at query time, no definition of what the field values mean in a business context. The agent is correct to hedge — it genuinely does not have enough information to answer confidently. What's missing is a semantic layer that provides those answers as queryable metadata, not as human-readable documentation the agent cannot access."
+  },
+  "context-006": {
+    "key_concepts": [
+      "not a separate project",
+      "generated at ingestion",
+      "co-located with data"
+    ],
+    "answer": "The engineer's concern is correct about any semantic layer built as a separate project: a separate team, a separate backlog, and a separate update cadence guarantee staleness. The architectural fix is to generate the semantic metadata where the data lands — at ingestion time, in the same lake the agent queries — rather than maintaining it by hand in a parallel system. Definitions that drift as the underlying data changes are caught immediately when the metadata generation is part of the pipeline rather than downstream of it. The constraint is 'every layer reads the one below it, and not one of them is a separate project': the semantic layer is a view of the metadata layer, not an independently maintained document."
   }
 }
