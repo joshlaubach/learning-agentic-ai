@@ -765,3 +765,26 @@ final unit, not assumed from earlier sessions' notes.
 
 This file can stay in the repo as a build record, or be deleted; either is fine now that
 the build itself is done.
+
+## Post-build addition: Chapter 4 Part B (multi-step reliability)
+
+Added after the build above was complete, on branch `claude/trusting-maxwell-4qqj1u`.
+
+- **What:** Chapter 4 grew a Part B (Tasks 5-8: `ch04-pass-hat-k`, `ch04-gate-chain`,
+  `ch04-refine-loop`, `ch04-harness-fingerprint`), a new `agentlib/reliability.py` for the
+  measurement plumbing (trial runner, pass@k, report, manifest helpers, `quorum_gate`,
+  `audit_gate`), Experiments 5-6, Break It 4-5, an optional live-API pass^k run, drill
+  questions 5-8, five `reliability-010..014` question-bank entries, and a REFERENCES.md update.
+  Chapter 4 is now 8 graded tasks / 71 cases; the course is 44 tasks / 366 cases.
+- **Repair first:** 27 markdown and 4 code cells in the Chapter 4 notebook had lost their
+  newlines (list `source` entries without `\n`), so they rendered collapsed and Experiments 1-4
+  were one-line comments that never ran; Experiment 3 also had a module-scope `nonlocal`
+  SyntaxError hiding behind that. Fixed in its own commit. Chapters 5 and 6 show the same
+  drift and were not touched.
+- **Not verified:** the live-API branch has only been run against a fake `call_model`, as with
+  every other real-API path here. The tau-bench GPT-4o figures and the MAST category shares
+  quoted in the chapter were taken from secondary summaries because arxiv.org was unreachable
+  from the build environment; REFERENCES.md flags both.
+- **Deliberately not done:** no `temperature`/`seed` forwarding in `llm_client.call_model`
+  (not accepted on every model tier; the manifest records sampling as "provider default, not
+  controlled" instead), and no capstone change (Ava has no irreversible tool to gate).

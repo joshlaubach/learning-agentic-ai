@@ -535,6 +535,384 @@ def test_ch04_circuit_breaker_rejects_counting_lifetime_failures():
     _rejects("ch04-circuit-breaker", Wrong)
 
 
+def test_ch04_pass_hat_k_rejects_the_plug_in_estimate():
+    """Plausible wrong answer: (successes / trials) ** k per task. It reads naturally off the
+    'probability of k successes in a row' definition, but it treats a 4-trial sample as draws
+    with replacement and overstates how often the agent succeeds."""
+
+    def wrong(results, k):
+        if not results:
+            raise ValueError("empty")
+        if k < 1:
+            raise ValueError("k")
+        total = 0.0
+        for task, trials in results.items():
+            if len(trials) < k:
+                raise ValueError(task)
+            total += (sum(trials) / len(trials)) ** k
+        return total / len(results)
+
+    _rejects("ch04-pass-hat-k", wrong)
+    _accepts("ch04-pass-hat-k")
+
+
+def test_ch04_pass_hat_k_rejects_the_pass_at_k_formula():
+    """Plausible wrong answer: the pass@k estimator, 1 - C(n-c, k) / C(n, k). Same combinatorics,
+    opposite question: it rises with k, where pass^k must fall."""
+    import math
+
+    def wrong(results, k):
+        if not results:
+            raise ValueError("empty")
+        if k < 1:
+            raise ValueError("k")
+        total = 0.0
+        for task, trials in results.items():
+            n, c = len(trials), sum(trials)
+            if n < k:
+                raise ValueError(task)
+            total += 1 - math.comb(n - c, k) / math.comb(n, k)
+        return total / len(results)
+
+    _rejects("ch04-pass-hat-k", wrong)
+
+
+def test_ch04_pass_hat_k_rejects_looking_only_at_the_first_k_trials():
+    """Plausible wrong answer: a task counts if its first k trials all passed. Whether the one
+    failure came first or last decides the score, and the rest of the evidence is discarded."""
+
+    def wrong(results, k):
+        if not results:
+            raise ValueError("empty")
+        if k < 1:
+            raise ValueError("k")
+        total = 0.0
+        for task, trials in results.items():
+            if len(trials) < k:
+                raise ValueError(task)
+            total += 1.0 if all(trials[:k]) else 0.0
+        return total / len(results)
+
+    _rejects("ch04-pass-hat-k", wrong)
+
+
+def test_ch04_pass_hat_k_rejects_pooling_trials_across_tasks():
+    """Plausible wrong answer: pool every trial into one bucket and apply the estimator once.
+    An always-right task and a never-right task average into a middling agent."""
+    import math
+
+    def wrong(results, k):
+        if not results:
+            raise ValueError("empty")
+        if k < 1:
+            raise ValueError("k")
+        n = sum(len(t) for t in results.values())
+        c = sum(sum(t) for t in results.values())
+        if min(len(t) for t in results.values()) < k:
+            raise ValueError("k")
+        return math.comb(c, k) / math.comb(n, k)
+
+    _rejects("ch04-pass-hat-k", wrong)
+
+
+def test_ch04_gate_chain_rejects_tuple_truthiness():
+    """Plausible wrong answer: `if not gate(...)`. A gate returns (ok, reason), and a non-empty
+    tuple is always truthy -- so every gate, even one that says (False, 'over limit'), passes
+    and the irreversible action runs."""
+
+    def wrong(action, gates, *args, **kwargs):
+        trail = []
+        for name, _cost, gate in sorted(gates, key=lambda g: g[1]):
+            outcome = gate(*args, **kwargs)
+            if not outcome:
+                return {"executed": False, "result": None, "denied_by": name, "trail": trail}
+            trail.append({"gate": name, "passed": True, "reason": ""})
+        if not gates:
+            return {"executed": False, "result": None, "denied_by": "no-gates", "trail": trail}
+        return {"executed": True, "result": action(*args, **kwargs), "denied_by": None,
+                "trail": trail}
+
+    _rejects("ch04-gate-chain", wrong)
+    _accepts("ch04-gate-chain")
+
+
+def test_ch04_gate_chain_rejects_failing_open_on_a_gate_error():
+    """Plausible wrong answer: wrap each gate in try/except and move on. A human gate that
+    times out, or a rules service that is down, then quietly approves the action."""
+
+    def wrong(action, gates, *args, **kwargs):
+        trail = []
+        if not gates:
+            return {"executed": False, "result": None, "denied_by": "no-gates", "trail": trail}
+        for name, _cost, gate in sorted(gates, key=lambda g: g[1]):
+            try:
+                ok, reason = gate(*args, **kwargs)
+            except Exception:
+                continue
+            trail.append({"gate": name, "passed": ok, "reason": reason})
+            if ok is not True:
+                return {"executed": False, "result": None, "denied_by": name, "trail": trail}
+        return {"executed": True, "result": action(*args, **kwargs), "denied_by": None,
+                "trail": trail}
+
+    _rejects("ch04-gate-chain", wrong)
+
+
+def test_ch04_gate_chain_rejects_vacuous_truth_on_an_empty_gate_list():
+    """Plausible wrong answer: `all(gate_passes)` over zero gates is True, so an action with
+    no gate in front of it runs. Missing protection is the bug, not an approval."""
+
+    def wrong(action, gates, *args, **kwargs):
+        trail = []
+        for name, _cost, gate in sorted(gates, key=lambda g: g[1]):
+            try:
+                ok, reason = gate(*args, **kwargs)
+            except Exception as e:
+                ok, reason = False, f"{type(e).__name__}: {e}"
+            trail.append({"gate": name, "passed": ok is True, "reason": reason})
+            if ok is not True:
+                return {"executed": False, "result": None, "denied_by": name, "trail": trail}
+        return {"executed": True, "result": action(*args, **kwargs), "denied_by": None,
+                "trail": trail}
+
+    _rejects("ch04-gate-chain", wrong)
+
+
+def test_ch04_gate_chain_rejects_running_every_gate_in_declared_order():
+    """Plausible wrong answer: run all gates in the order written, then decide. It pages the
+    human before the free rule check that would have rejected the action anyway."""
+
+    def wrong(action, gates, *args, **kwargs):
+        trail = []
+        for name, _cost, gate in gates:
+            try:
+                ok, reason = gate(*args, **kwargs)
+            except Exception as e:
+                ok, reason = False, f"{type(e).__name__}: {e}"
+            trail.append({"gate": name, "passed": ok is True, "reason": reason})
+        if not gates or not all(t["passed"] for t in trail):
+            denied = next((t["gate"] for t in trail if not t["passed"]), "no-gates")
+            return {"executed": False, "result": None, "denied_by": denied, "trail": trail}
+        return {"executed": True, "result": action(*args, **kwargs), "denied_by": None,
+                "trail": trail}
+
+    _rejects("ch04-gate-chain", wrong)
+
+
+def test_ch04_gate_chain_rejects_swallowing_the_actions_own_error():
+    """Plausible wrong answer: one big try/except around the whole body. An action that fails
+    after the gates passed comes back as a tidy denial instead of an exception."""
+
+    def wrong(action, gates, *args, **kwargs):
+        trail = []
+        if not gates:
+            return {"executed": False, "result": None, "denied_by": "no-gates", "trail": trail}
+        try:
+            for name, _cost, gate in sorted(gates, key=lambda g: g[1]):
+                ok, reason = gate(*args, **kwargs)
+                trail.append({"gate": name, "passed": ok is True, "reason": reason})
+                if ok is not True:
+                    return {"executed": False, "result": None, "denied_by": name,
+                            "trail": trail}
+            return {"executed": True, "result": action(*args, **kwargs), "denied_by": None,
+                    "trail": trail}
+        except Exception as e:
+            return {"executed": False, "result": None, "denied_by": "error",
+                    "trail": trail + [{"gate": "error", "passed": False, "reason": str(e)}]}
+
+    _rejects("ch04-gate-chain", wrong)
+
+
+def test_ch04_refine_loop_rejects_accepting_the_critics_approval():
+    """Plausible wrong answer: stop as soon as the critique says it looks good. The critique is
+    the model grading itself; a sycophantic critic then ends the loop on a draft the external
+    verifier already rejected."""
+
+    def wrong(generate, critique, verify, max_rounds=3):
+        if max_rounds < 1:
+            raise ValueError("max_rounds")
+        trace, feedback = [], None
+        for round_no in range(1, max_rounds + 1):
+            draft = generate(feedback)
+            ok, reason = verify(draft)
+            trace.append({"round": round_no, "draft": draft, "verified": ok, "reason": reason,
+                          "critique": None})
+            if ok:
+                return {"draft": draft, "verified": True, "rounds": round_no,
+                        "stop": "verified", "trace": trace}
+            note = critique(draft)
+            trace[-1]["critique"] = note
+            if "lgtm" in note.lower():
+                return {"draft": draft, "verified": True, "rounds": round_no,
+                        "stop": "verified", "trace": trace}
+            feedback = f"verifier: {reason}\ncritique: {note}"
+        return {"draft": draft, "verified": False, "rounds": max_rounds, "stop": "budget",
+                "trace": trace}
+
+    _rejects("ch04-refine-loop", wrong)
+    _accepts("ch04-refine-loop")
+
+
+def test_ch04_refine_loop_rejects_always_polishing_to_the_last_round():
+    """Plausible wrong answer: always run every round and return the last draft, verified or
+    not. It spends the whole budget on a draft that passed in round 1, and a later regeneration
+    can replace a good draft with a worse one."""
+
+    def wrong(generate, critique, verify, max_rounds=3):
+        if max_rounds < 1:
+            raise ValueError("max_rounds")
+        trace, feedback = [], None
+        for round_no in range(1, max_rounds + 1):
+            draft = generate(feedback)
+            ok, reason = verify(draft)
+            note = critique(draft)
+            trace.append({"round": round_no, "draft": draft, "verified": ok, "reason": reason,
+                          "critique": note})
+            feedback = f"verifier: {reason}\ncritique: {note}"
+        return {"draft": draft, "verified": bool(ok), "rounds": max_rounds,
+                "stop": "verified" if ok else "budget", "trace": trace}
+
+    _rejects("ch04-refine-loop", wrong)
+
+
+def test_ch04_refine_loop_rejects_a_critique_after_the_final_failed_draft():
+    """Plausible wrong answer: critique every failed draft, including the last. The final
+    critique can never be used -- a wasted model call every time the budget runs out."""
+
+    def wrong(generate, critique, verify, max_rounds=3):
+        if max_rounds < 1:
+            raise ValueError("max_rounds")
+        trace, feedback, previous = [], None, None
+        for round_no in range(1, max_rounds + 1):
+            draft = generate(feedback)
+            if previous is not None and draft == previous:
+                return {"draft": draft, "verified": False, "rounds": round_no,
+                        "stop": "stalled", "trace": trace}
+            ok, reason = verify(draft)
+            note = None if ok else critique(draft)
+            trace.append({"round": round_no, "draft": draft, "verified": bool(ok),
+                          "reason": reason, "critique": note})
+            if ok:
+                return {"draft": draft, "verified": True, "rounds": round_no,
+                        "stop": "verified", "trace": trace}
+            feedback = f"verifier: {reason}\ncritique: {note}"
+            previous = draft
+        return {"draft": draft, "verified": False, "rounds": max_rounds, "stop": "budget",
+                "trace": trace}
+
+    _rejects("ch04-refine-loop", wrong)
+
+
+def test_ch04_refine_loop_rejects_feedback_that_omits_the_verifiers_reason():
+    """Plausible wrong answer: regenerate from the model's own critique alone. The verifier
+    holds the ground truth about what failed; discarding it leaves the model grading itself."""
+
+    def wrong(generate, critique, verify, max_rounds=3):
+        if max_rounds < 1:
+            raise ValueError("max_rounds")
+        trace, feedback, previous = [], None, None
+        for round_no in range(1, max_rounds + 1):
+            draft = generate(feedback)
+            if previous is not None and draft == previous:
+                return {"draft": draft, "verified": False, "rounds": round_no,
+                        "stop": "stalled", "trace": trace}
+            ok, reason = verify(draft)
+            trace.append({"round": round_no, "draft": draft, "verified": bool(ok),
+                          "reason": reason, "critique": None})
+            if ok:
+                return {"draft": draft, "verified": True, "rounds": round_no,
+                        "stop": "verified", "trace": trace}
+            if round_no == max_rounds:
+                break
+            feedback = critique(draft)
+            trace[-1]["critique"] = feedback
+            previous = draft
+        return {"draft": draft, "verified": False, "rounds": max_rounds, "stop": "budget",
+                "trace": trace}
+
+    _rejects("ch04-refine-loop", wrong)
+
+
+def test_ch04_refine_loop_rejects_an_unbounded_loop_without_hanging_the_grader():
+    """Plausible wrong answer: `while not verified`, with no round budget. Against a verifier
+    that never passes it would spin forever; the suite's fakes raise after 25 calls so the
+    mistake fails the case instead of hanging CI."""
+
+    def wrong(generate, critique, verify, max_rounds=3):
+        feedback, rounds, trace = None, 0, []
+        while True:
+            rounds += 1
+            draft = generate(feedback)
+            ok, reason = verify(draft)
+            if ok:
+                return {"draft": draft, "verified": True, "rounds": rounds, "stop": "verified",
+                        "trace": trace}
+            feedback = f"verifier: {reason}\ncritique: {critique(draft)}"
+
+    failures = _rejects("ch04-refine-loop", wrong)
+    assert "no round budget" in failures
+
+
+def test_ch04_harness_fingerprint_rejects_python_hash_of_str():
+    """Plausible wrong answer: hex(hash(str(manifest))). str() depends on dict order, hash() is
+    salted per process, and the result is not a fixed-width hex string."""
+
+    def wrong(manifest):
+        return hex(hash(str(manifest)))
+
+    _rejects("ch04-harness-fingerprint", wrong)
+    _accepts("ch04-harness-fingerprint")
+
+
+def test_ch04_harness_fingerprint_rejects_default_str_serialisation():
+    """Plausible wrong answer: json.dumps(..., default=str) so nothing ever raises. A function
+    or set then serialises as its repr -- with a memory address -- so the 'fingerprint' of an
+    identical harness changes every run."""
+    import hashlib
+    import json
+
+    def wrong(manifest):
+        canonical = json.dumps(manifest, sort_keys=True, default=str)
+        return hashlib.sha256(canonical.encode()).hexdigest()[:12]
+
+    _rejects("ch04-harness-fingerprint", wrong)
+
+
+def test_ch04_harness_fingerprint_rejects_hashing_a_chosen_subset():
+    """Plausible wrong answer: hash model + prompt + tools, the fields that feel like 'the
+    agent'. Budgets, retries and verifications change the reliability number just as much."""
+    import hashlib
+    import json
+
+    def wrong(manifest):
+        subset = {k: manifest.get(k) for k in ("model", "prompt_version", "tools")}
+        canonical = json.dumps(subset, sort_keys=True)
+        return hashlib.sha256(canonical.encode()).hexdigest()[:12]
+
+    failures = _rejects("ch04-harness-fingerprint", wrong)
+    assert "budgets" in failures or "max_steps" in failures
+
+
+def test_ch04_harness_fingerprint_rejects_sorting_lists():
+    """Plausible wrong answer: sort every list so the hash is 'order-insensitive'. A different
+    tool order or retry schedule is a different harness."""
+    import hashlib
+    import json
+
+    def canon(x):
+        if isinstance(x, dict):
+            return {k: canon(v) for k, v in x.items()}
+        if isinstance(x, list):
+            return sorted((canon(v) for v in x), key=repr)
+        return x
+
+    def wrong(manifest):
+        canonical = json.dumps(canon(manifest), sort_keys=True)
+        return hashlib.sha256(canonical.encode()).hexdigest()[:12]
+
+    _rejects("ch04-harness-fingerprint", wrong)
+
+
 # --- Chapter 5 ---
 
 

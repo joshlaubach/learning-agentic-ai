@@ -822,6 +822,47 @@
     ],
     "answer": "This is post-filtering. Retrieval takes the global top 50 by similarity, and the tenant filter is applied afterwards -- so the caller asks for k results and receives however many of those 50 happened to belong to that tenant, which for a small tenant is frequently zero. The system is not 'finding nothing'; it is finding 50 things and discarding all of them. The asymmetry is the diagnostic signature: a tenant holding 30% of the corpus rarely notices, a tenant holding 0.1% sees it constantly, and the bug looks like a data problem rather than a retrieval one. The fix is pre-filtering (also called filtered search): restrict the candidate set to the tenant's vectors BEFORE the nearest-neighbour scan, so top-k is k results from within the eligible set by construction. Most production vector stores support this natively via metadata filters or per-tenant namespaces/partitions; with a per-tenant index or namespace the filter becomes routing and the problem disappears entirely. Two caveats worth raising. Naive pre-filtering against an ANN graph can degrade recall, because the graph's connectivity was built over all vectors and aggressive filtering can strand the traversal -- which is why engines implement filtered search specially rather than just masking results. And over-fetching (retrieve 500, then filter) is a legitimate stopgap but not a fix: it shifts the failure threshold rather than removing it, and the smallest tenant will eventually fall through again."
   },
+  "reliability-010": {
+    "key_concepts": [
+      "compounding error",
+      "pass^k",
+      "pass@k"
+    ],
+    "answer": "About 36%: a run succeeds only if every step does, so the rate is 0.95 raised to the 20th power, roughly one run in three, and per-step accuracy hides that completely. Report whole-run outcomes from repeated trials of each task, and show pass^k (all k trials succeed, which falls as k grows) next to pass@1, since pass@k only says the agent can sometimes do it. Estimate pass^k per task as C(c,k)/C(n,k) rather than raising the average success rate to the k-th power, count crashed trials as failures, and disclose n, k, and the cost per success. To reach 90% over 20 steps each step needs about 99.5%, so the fixes are higher per-step reliability or fewer steps."
+  },
+  "reliability-011": {
+    "key_concepts": [
+      "pass@k vs pass^k",
+      "capability vs reliability",
+      "repeated trials"
+    ],
+    "answer": "pass@8 says that, given eight attempts, some attempt usually succeeded: it measures capability, the best case, and it rises with k. Unattended operation needs the opposite number, pass^k, the chance that every run of a task succeeds, which falls as k grows and can be far lower for the same agent. Ask for pass^k at a realistic k from n repeated trials per task, with crashed trials counted as failures, the cost per success, and the harness the numbers came from. Also ask what sits in front of the irreversible refund call (rule and human gates that fail closed), because even a good pass^k leaves a tail of bad runs that only a gate can stop."
+  },
+  "reliability-012": {
+    "key_concepts": [
+      "gate before irreversible action",
+      "fail-closed",
+      "cheapest-first",
+      "human approval"
+    ],
+    "answer": "Put a gate chain in front of each irreversible action and run it cheapest first, stopping at the first rejection: deterministic rules (amount limits, recipient allow-lists, record ownership), then tests or a dry run, then an independent consensus of verifiers where the stakes justify it, and a person only for what survives all of that. Every gate fails closed, so a timeout, an exception, or a malformed result denies the action, and no gates at all also denies. Gates run before the action, never after, and the action runs once; if it is retried, it needs an idempotency key. Finally test the gates themselves against known-good and known-bad cases, since a gate that approves everything looks identical to one that works until it is audited."
+  },
+  "reliability-013": {
+    "key_concepts": [
+      "self-refinement",
+      "external verifier",
+      "round budget"
+    ],
+    "answer": "It helps when there is a clear, checkable criterion and the feedback is specific enough to act on, but it is not free and it is not self-validating: models favour their own output, and intrinsic self-correction without outside signal often fails to improve answers and can break correct ones. To rely on it, acceptance has to come from a verifier outside the model (tests, a schema, rules, a person), with the verifier's reason fed into the next draft. It also needs a round budget, a stop when the draft stops changing, and an honest exit that returns the last draft flagged unverified when the budget runs out. Each round costs model calls, so measure the lift against a no-loop baseline before paying for it."
+  },
+  "reliability-014": {
+    "key_concepts": [
+      "harness manifest",
+      "budgets and retries",
+      "reproducibility"
+    ],
+    "answer": "The harness, not just the model: the exact model id and sampling settings, the prompt version, the context policy, the tools and their versions, the retry policy, the step, call, time, and cost budgets, and the verifications in front of each action. Add the number of tasks, the trials per task, k, and the cost per trial and per success. A short fingerprint of that manifest makes mismatches obvious, and a diff of two manifests shows what changed. Scaffolds alone can move both accuracy and cost, so differing numbers usually mean differing harnesses until the manifests prove otherwise."
+  },
   "context-001": {
     "key_concepts": [
       "meaning vs. access",

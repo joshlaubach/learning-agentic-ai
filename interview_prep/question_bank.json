@@ -1155,6 +1155,61 @@
     "source_note": null
   },
   {
+    "id": "reliability-010",
+    "chapter": 4,
+    "category": "Multi-step reliability",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "Your agent takes 20 sequential steps, and each step is 95% reliable when tested on its own.",
+    "follow_up": "What fraction of complete runs should you expect to succeed, and which metric would you report instead of per-step accuracy?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-011",
+    "chapter": 4,
+    "category": "Multi-step reliability",
+    "difficulty": "senior",
+    "format": "slack_message",
+    "scenario": "Slack, #agents: \"eval says pass@8 is 97% on the refund agent, so I think we can let it run unattended. any objections?\"",
+    "follow_up": "What does pass@8 actually tell you, and what would you want to see before agreeing?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-012",
+    "chapter": 4,
+    "category": "Multi-step reliability",
+    "difficulty": "senior",
+    "format": "scenario_first",
+    "scenario": "Your agent can send customer emails, issue refunds, and delete records. A reviewer asks where the approval steps are.",
+    "follow_up": "Design the gates in front of the irreversible actions: their order, what each does when it fails, and who or what decides.",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-013",
+    "chapter": 4,
+    "category": "Multi-step reliability",
+    "difficulty": "mid",
+    "format": "stakeholder_quote",
+    "scenario": "Product lead: \"Can't we just have the model review its own answer and fix it? That's free quality.\"",
+    "follow_up": "When does a generate-critique-regenerate loop help, and what has to be true for it to be safe to rely on?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
+    "id": "reliability-014",
+    "chapter": 4,
+    "category": "Multi-step reliability",
+    "difficulty": "mid",
+    "format": "question_first",
+    "scenario": "Two teams report different pass^k numbers for the same model on the same benchmark.",
+    "follow_up": "What must each report disclose before the numbers can be compared?",
+    "grounded_in_real_incident": false,
+    "source_note": null
+  },
+  {
     "id": "context-001",
     "chapter": 8,
     "category": "Data context design for agents",

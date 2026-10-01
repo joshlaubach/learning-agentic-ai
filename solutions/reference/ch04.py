@@ -1,11 +1,15 @@
 """Chapter 4 reference answers — Production Reliability.
 
 Caching with staleness, retry with exponential backoff, the retryable/non-retryable split,
-and a circuit breaker.
+and a circuit breaker; then the multi-step half: the pass^k estimator, a fail-closed gate
+chain, a verifier-driven refine loop, and a harness fingerprint.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
+import math
 import random
 
 
@@ -117,3 +121,87 @@ class CircuitBreaker:
             self.failure_count = 0
             self.state = "closed"
             return result
+
+
+# --- Multi-step reliability ---------------------------------------------------------------
+
+
+def pass_hat_k(results: dict, k: int) -> float:
+    """Unbiased pass^k (tau-bench): the chance that k trials drawn from the n you ran ALL
+    succeed, averaged over tasks. Per task that is C(c, k) / C(n, k) with c successes in n."""
+    if not results:
+        raise ValueError("results is empty")
+    if k < 1:
+        raise ValueError(f"k must be at least 1, got {k}")
+    total = 0.0
+    for task, trials in results.items():
+        n, c = len(trials), sum(trials)
+        if n < k:
+            raise ValueError(f"task {task!r} has {n} trials, fewer than k={k}")
+        total += math.comb(c, k) / math.comb(n, k)
+    return total / len(results)
+
+
+def run_gated(action, gates, *args, **kwargs) -> dict:
+    """Run `action` only if every gate passes. Gates run cheapest first and stop at the first
+    denial. Fail closed: anything but a (True, reason) pair denies, and so does a gate that
+    raises or an empty gate list."""
+    trail: list[dict] = []
+    if not gates:
+        return {"executed": False, "result": None, "denied_by": "no-gates", "trail": trail}
+    for name, _cost, gate in sorted(gates, key=lambda g: g[1]):  # sorted() is stable
+        try:
+            outcome = gate(*args, **kwargs)
+        except Exception as exc:
+            passed, reason = False, f"{type(exc).__name__}: {exc}"
+        else:
+            if isinstance(outcome, tuple) and len(outcome) == 2:
+                passed, reason = outcome[0] is True, outcome[1]
+            else:
+                passed, reason = False, f"malformed gate result: {outcome!r}"
+        trail.append({"gate": name, "passed": passed, "reason": reason})
+        if not passed:
+            return {"executed": False, "result": None, "denied_by": name, "trail": trail}
+    # Outside the try above on purpose: an action that fails is the caller's problem to see,
+    # not a gate denial.
+    result = action(*args, **kwargs)
+    return {"executed": True, "result": result, "denied_by": None, "trail": trail}
+
+
+def refine(generate, critique, verify, max_rounds: int = 3) -> dict:
+    """Generate -> verify -> (critique -> regenerate). Acceptance belongs to the external
+    `verify`, never to the model's own critique, which only feeds the next draft."""
+    if max_rounds < 1:
+        raise ValueError(f"max_rounds must be at least 1, got {max_rounds}")
+    trace: list[dict] = []
+    feedback = None
+    previous = None
+    for round_no in range(1, max_rounds + 1):
+        draft = generate(feedback)
+        if previous is not None and draft == previous:
+            # The same draft already failed verification; running it again cannot help.
+            trace.append({"round": round_no, "draft": draft, "verified": False,
+                          "reason": "unchanged from the previous draft", "critique": None})
+            return {"draft": draft, "verified": False, "rounds": round_no,
+                    "stop": "stalled", "trace": trace}
+        ok, reason = verify(draft)
+        entry = {"round": round_no, "draft": draft, "verified": bool(ok),
+                 "reason": reason, "critique": None}
+        trace.append(entry)
+        if ok:
+            return {"draft": draft, "verified": True, "rounds": round_no,
+                    "stop": "verified", "trace": trace}
+        if round_no == max_rounds:
+            break  # budget spent: a critique now would be a wasted call
+        entry["critique"] = critique(draft)
+        feedback = f"verifier: {reason}\ncritique: {entry['critique']}"
+        previous = draft
+    return {"draft": draft, "verified": False, "rounds": max_rounds,
+            "stop": "budget", "trace": trace}
+
+
+def fingerprint(manifest: dict) -> str:
+    """12 hex chars of sha256 over canonical JSON: key order is ignored at every depth, list
+    order is not, and anything that is not plain JSON data raises TypeError."""
+    canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
