@@ -155,7 +155,7 @@ ch07-json-repair: 5/8 checks passed.
 Fix the function above and re-run this cell.
 ````
 
-There are **44 graded tasks and 366 assertion cases** across the nine chapters, distributed
+There are **44 graded tasks and 380 assertion cases** across the nine chapters, distributed
 roughly two to eight per chapter (`python grade.py --count-cases` prints the current totals,
 which is the number to trust if this paragraph has drifted). They are adversarially tested: for every task, a plausible
 wrong answer is implemented in `tests/test_grader_catches_wrong_answers.py` and asserted to

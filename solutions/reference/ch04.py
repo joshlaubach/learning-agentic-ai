@@ -79,6 +79,8 @@ def retry_with_backoff(
                 last_exc = exc
                 if retry_predicate is not None and not retry_predicate(exc):
                     raise
+                if attempt == max_retries:
+                    break  # sleeping before giving up only delays the error
                 delay = base_delay * (2 ** (attempt - 1)) + rng.uniform(0, jitter)
                 attempts_log.append(
                     {"attempt": attempt, "error": str(exc), "backoff_s": round(delay, 2)}
@@ -200,8 +202,24 @@ def refine(generate, critique, verify, max_rounds: int = 3) -> dict:
             "stop": "budget", "trace": trace}
 
 
+def _reject_lossy(value) -> None:
+    """json.dumps quietly turns tuples into lists and int keys into strings, so two different
+    manifests would share a fingerprint. Refuse anything it would convert."""
+    if isinstance(value, dict):
+        for k, v in value.items():
+            if not isinstance(k, str):
+                raise TypeError(f"manifest keys must be strings; got {k!r}")
+            _reject_lossy(v)
+    elif isinstance(value, list):
+        for v in value:
+            _reject_lossy(v)
+    elif value is not None and not isinstance(value, (str, int, float, bool)):
+        raise TypeError(f"{type(value).__name__} is not plain JSON data: {value!r}")
+
+
 def fingerprint(manifest: dict) -> str:
     """12 hex chars of sha256 over canonical JSON: key order is ignored at every depth, list
     order is not, and anything that is not plain JSON data raises TypeError."""
-    canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+    _reject_lossy(manifest)
+    canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"), allow_nan=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]

@@ -86,10 +86,21 @@ def _p9(f):
     )
 
 
+def _p10(f):
+    """a document retrieved twice counts once"""
+    got = f(["a", "a"], {"a"}, 2)
+    assert got == 0.5, (
+        "two slots, one distinct relevant document -> 0.5, got "
+        f"{got}. Once documents are chunked, several chunks of one document share a doc_id, "
+        "so repeats are normal. Counting each repeat as a new hit lets a retriever score "
+        "perfectly by returning the same document k times."
+    )
+
+
 task(
     "ch03-precision-k",
     _ref_precision,
-    [_p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9],
+    [_p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10],
 )
 
 
@@ -174,7 +185,21 @@ def _r9(f):
     )
 
 
-task("ch03-recall-k", _ref_recall, [_r1, _r2, _r3, _r4, _r5, _r6, _r7, _r8, _r9])
+def _r10(f):
+    """a document retrieved twice was still only found once"""
+    got = f(["a", "a"], {"a", "b"}, 2)
+    assert got == 0.5, (
+        "only 'a' of the two relevant documents was found -> 0.5, got "
+        f"{got}. Counting 'a' twice reports 'b' as found when it never came back. Count "
+        "distinct ids: chunked indexes return the same doc_id several times all the time."
+    )
+
+
+task(
+    "ch03-recall-k",
+    _ref_recall,
+    [_r1, _r2, _r3, _r4, _r5, _r6, _r7, _r8, _r9, _r10],
+)
 
 
 # --- ch03-mrr ---
@@ -347,10 +372,32 @@ def _o8(f):
     assert f("", 100, 20) == [], "nothing in, nothing out"
 
 
+def _o9(f):
+    """a negative overlap is rejected"""
+    try:
+        got = f("abcdefghij", 4, -1)
+    except ValueError:
+        return
+    raise AssertionError(
+        f"overlap=-1 makes the step larger than the chunk, so characters fall in the gaps: "
+        f"got {got!r}, and 'e' and 'j' are gone. Raise ValueError for a negative overlap."
+    )
+
+
+def _o10(f):
+    """no final chunk that the previous one already contains"""
+    got = f("abcdefghij", 6, 2)
+    assert got == ["abcdef", "efghij"], (
+        f"expected ['abcdef', 'efghij'], got {got!r}. Once a chunk reaches the end of the "
+        "text, stop. Another window starting inside it is a duplicate that costs an index "
+        "entry and adds nothing."
+    )
+
+
 task(
     "ch03-chunk-overlap",
     _ref_overlap,
-    [_o1, _o2, _o3, _o4, _o5, _o6, _o7, _o8],
+    [_o1, _o2, _o3, _o4, _o5, _o6, _o7, _o8, _o9, _o10],
 )
 
 
@@ -470,8 +517,20 @@ def _b9(f):
     assert docs == before, f"scoring must not mutate the input documents; they are now {docs}"
 
 
+def _b10(f):
+    """an empty corpus returns an empty dict"""
+    try:
+        got = f("alpha", [])
+    except ZeroDivisionError:
+        raise AssertionError(
+            "an empty corpus has no average document length, so dividing by it crashes. "
+            "Return {} before computing it."
+        ) from None
+    assert got == {}, f"no documents, no scores: expected {{}}, got {got!r}"
+
+
 task(
     "ch03-bm25",
     _ref_bm25,
-    [_b1, _b2, _b3, _b4, _b5, _b6, _b7, _b8, _b9],
+    [_b1, _b2, _b3, _b4, _b5, _b6, _b7, _b8, _b9, _b10],
 )

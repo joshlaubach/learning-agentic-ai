@@ -312,8 +312,8 @@ def _h6(f):
 
 def _h7(f):
     """right at the threshold"""
-    # 0.25 and 0.5 are exact in binary, so this boundary is actually reachable -- 0.10 vs
-    # 0.15 against 0.05 is not, since the subtraction lands on 0.04999999999999999.
+    # 0.25 and 0.5 are exact in binary, so this boundary is exact with or without rounding.
+    # _h9 covers the pairs that are not.
     assert f(0.25, 0.50, threshold=0.25) is False, (
         "a difference of exactly the threshold is not inside it -- use a strict <"
     )
@@ -328,10 +328,24 @@ def _h8(f):
     )
 
 
+def _h9(f):
+    """a five-point swing is not inside a five-point threshold, whatever the rates"""
+    for stable, canary in (
+        (0.10, 0.15), (0.20, 0.25), (0.30, 0.35), (0.07, 0.12), (0.50, 0.55), (0.12, 0.17),
+    ):
+        got = f(stable, canary)
+        assert got is False, (
+            f"({stable}, {canary}) is a five-point swing and came back {got!r}. In floating "
+            f"point, {canary} - {stable} = {canary - stable!r}, so a plain `<` lets some "
+            "five-point swings through and catches others, depending on which numbers you "
+            "picked. Round the difference before comparing: round(abs(diff), 9) < threshold."
+        )
+
+
 task(
     "ch09-drift-detect",
     _ref_health,
-    [_h1, _h2, _h3, _h4, _h5, _h6, _h7, _h8],
+    [_h1, _h2, _h3, _h4, _h5, _h6, _h7, _h8, _h9],
 )
 
 
