@@ -10,21 +10,24 @@ from __future__ import annotations
 
 
 def precision_at_k(retrieved_ids: list[str], relevant_ids: set[str], k: int) -> float:
-    """Of the top-k retrieved documents, what fraction are actually relevant?"""
+    """Of the top-k retrieved documents, what fraction are actually relevant?
+
+    A document that shows up more than once counts as one hit: the repeat takes a slot and
+    adds nothing. Chunked indexes make repeats normal, since several chunks share a doc_id.
+    """
     top_k = retrieved_ids[:k]
     if not top_k:
         return 0.0
-    hits = sum(1 for doc_id in top_k if doc_id in relevant_ids)
+    hits = len(set(top_k) & set(relevant_ids))
     return hits / len(top_k)
 
 
 def recall_at_k(retrieved_ids: list[str], relevant_ids: set[str], k: int) -> float:
     """Of all the documents that were actually relevant, what fraction showed up in the
-    top-k?"""
+    top-k? A document retrieved twice was still only found once."""
     if not relevant_ids:
         return 0.0
-    top_k = retrieved_ids[:k]
-    hits = sum(1 for doc_id in top_k if doc_id in relevant_ids)
+    hits = len(set(retrieved_ids[:k]) & set(relevant_ids))
     return hits / len(relevant_ids)
 
 
@@ -48,6 +51,8 @@ def chunk_with_overlap(text: str, chunk_size: int = 400, overlap: int = 0) -> li
     chunk is another vector to store, index, and search. Overlap buys recall against boundary
     splits and pays for it in index size.
     """
+    if overlap < 0:
+        raise ValueError(f"overlap ({overlap}) cannot be negative; that skips characters")
     if overlap >= chunk_size:
         raise ValueError(
             f"overlap ({overlap}) must be smaller than chunk_size ({chunk_size}); "

@@ -278,10 +278,24 @@ def _b11(f):
         )
 
 
+def _b12(f):
+    """no sleep before giving up"""
+    sleep_fn = _counting_sleep()
+    try:
+        f(_fails_then_succeeds(99), max_retries=3, jitter=0, sleep_fn=sleep_fn)()
+    except RuntimeError:
+        pass
+    assert sleep_fn.calls == [1.0, 2.0], (
+        f"3 attempts need 2 waits, between them; got {sleep_fn.calls}. A sleep after the final "
+        "failure delays the error by the longest wait in the schedule and buys nothing, "
+        "because no attempt follows it."
+    )
+
+
 task(
     "ch04-backoff",
     _ref_backoff,
-    [_b1, _b2, _b3, _b4, _b5, _b6, _b7, _b8, _b9, _b10, _b11],
+    [_b1, _b2, _b3, _b4, _b5, _b6, _b7, _b8, _b9, _b10, _b11, _b12],
 )
 
 
@@ -1112,8 +1126,31 @@ def _h8(f):
     )
 
 
+def _h9(f):
+    """values JSON would silently convert are refused"""
+    for label, mutate in (
+        ("a tuple", lambda m: m.update(tools=("search", "lookup"))),
+        ("an int key", lambda m: m["budgets"].update({1: "x"})),
+        ("NaN", lambda m: m["retry_policy"].update(base_delay=float("nan"))),
+    ):
+        m = _manifest()
+        mutate(m)
+        try:
+            got = f(m)
+        except (TypeError, ValueError):
+            continue
+        except NotImplementedError:
+            raise
+        raise AssertionError(
+            f"a manifest holding {label} produced {got!r}. json.dumps turns tuples into "
+            "lists and int keys into strings, so {1: 'x'} and {'1': 'x'} would share a "
+            "fingerprint -- the one thing a fingerprint must never do. NaN isn't valid JSON "
+            "at all. Check for these and raise TypeError (or ValueError for NaN)."
+        )
+
+
 task(
     "ch04-harness-fingerprint",
     _ref_fingerprint,
-    [_h1, _h2, _h3, _h4, _h5, _h6, _h7, _h8],
+    [_h1, _h2, _h3, _h4, _h5, _h6, _h7, _h8, _h9],
 )

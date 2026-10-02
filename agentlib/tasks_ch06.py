@@ -131,10 +131,27 @@ def _p11(f):
     )
 
 
+def _p12(f):
+    """amounts that are not finite numbers are denied"""
+    for bad in (float("nan"), float("inf"), "5000", True):
+        try:
+            got = f("ORD-1002", bad, ORDERS)
+        except Exception as e:
+            raise AssertionError(
+                f"amount={bad!r} raised {type(e).__name__}: {e}. Deny it with a reason "
+                "instead -- a crash is not a refusal, and the caller may treat it as one."
+            ) from None
+        assert isinstance(got, tuple) and got[0] is False, (
+            f"amount={bad!r} came back {got!r}. Every comparison with NaN is False, so "
+            "'refuse if <= 0, refuse if > total' approves it. Write the check the other way "
+            "round -- approve only if 0 < amount <= total -- and anything odd fails closed."
+        )
+
+
 task(
     "ch06-policy-check",
     _ref_policy,
-    [_p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11],
+    [_p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12],
 )
 
 

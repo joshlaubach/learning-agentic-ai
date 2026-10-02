@@ -59,8 +59,11 @@ def check_canary_health(
     """Is the canary's behaviour close enough to the stable version's to keep rolling?
 
     The threshold is the entire content of this function, and 0.05 is calibrated against what
-    a real regression looks like -- five percentage points, not fifty."""
-    return abs(canary_rate - stable_rate) < threshold
+    a real regression looks like -- five percentage points, not fifty.
+
+    The rounding is not cosmetic: 0.15 - 0.10 is 0.04999999999999999 in floating point, so
+    without it a true five-point swing reads as inside a five-point threshold."""
+    return round(abs(canary_rate - stable_rate), 9) < threshold
 
 
 # --- Written diagnoses (the two "diagnose before reading on" scenarios) ---

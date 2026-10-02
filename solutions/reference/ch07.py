@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re as _re
 import sys
 
 
@@ -39,6 +40,11 @@ def validate_tool_output(response: dict, model):
         return None, exc
 
 
+def _normalize(name: str) -> str:
+    """PyPI treats scikit-learn, scikit_learn and Scikit.Learn as one name (PEP 503)."""
+    return _re.sub(r"[-_.]+", "-", name).lower()
+
+
 def classify_failure(package_name: str, response: dict, model) -> dict:
     """Sort a raw tool response into this chapter's four categories.
 
@@ -46,6 +52,13 @@ def classify_failure(package_name: str, response: dict, model) -> dict:
     means the response failed to type-check, which a retry against a fresh source can fix.
     Semantically wrong means it type-checked perfectly and describes the wrong thing, which
     no retry will ever fix and no schema will ever catch."""
+    if not isinstance(response, dict):
+        return {
+            "category": "malformed",
+            "action": "switch",
+            "detail": f"expected a JSON object, got {type(response).__name__}",
+        }
+
     validated, error = validate_tool_output(response, model)
 
     if error is not None:
@@ -63,7 +76,7 @@ def classify_failure(package_name: str, response: dict, model) -> dict:
             "detail": f"field(s) {bad} failed type validation",
         }
 
-    if validated.name != package_name:
+    if _normalize(validated.name) != _normalize(package_name):
         return {
             "category": "semantically_wrong",
             "action": "ask-user",
@@ -94,17 +107,20 @@ def repair_json(raw: str):
         end = body.find("```")
         text = (body if end == -1 else body[:end]).strip()
 
-    # Scan to the LAST closing brace, not the first: a '}' can legitimately appear inside a
-    # string value, and a non-greedy match would stop there and truncate the object.
-    first, last = text.find("{"), text.rfind("}")
-    if first == -1 or last == -1 or last < first:
-        return None
-
-    try:
-        parsed = json.loads(text[first : last + 1])
-    except ValueError:
-        return None
-    return parsed if isinstance(parsed, dict) else None
+    # Let the JSON parser find where the object ends. Neither the first '}' (it can sit inside
+    # a string value) nor the last (the prose after the object can contain braces) is safe.
+    # raw_decode parses one value starting at an index and ignores whatever follows it.
+    decoder = json.JSONDecoder()
+    start = text.find("{")
+    while start != -1:
+        try:
+            parsed, _ = decoder.raw_decode(text, start)
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, dict) and parsed:
+            return parsed
+        start = text.find("{", start + 1)
+    return None
 
 
 def retry_until_valid(model, max_attempts: int = 4):
@@ -122,8 +138,6 @@ def retry_until_valid(model, max_attempts: int = 4):
     return None, max_attempts
 
 
-import re as _re
-
 _SENSITIVE_KEY = _re.compile(r"key|token|secret|password|auth", _re.IGNORECASE)
 
 
@@ -132,16 +146,21 @@ def sanitize_tool_log(call_record: dict) -> dict:
 
     Any field whose key contains 'key', 'token', 'secret', 'password', or 'auth'
     (case-insensitive, substring match) has its value replaced with '[REDACTED]'.
-    Nested dicts are processed recursively. The original dict is never mutated."""
-    result = {}
-    for k, v in call_record.items():
-        if isinstance(v, dict):
-            result[k] = sanitize_tool_log(v)
-        elif _SENSITIVE_KEY.search(k):
-            result[k] = "[REDACTED]"
-        else:
-            result[k] = v
-    return result
+    Dicts and lists are processed recursively, to any depth -- HTTP headers often arrive as
+    a list of dicts. The original is never mutated, and no container is shared with it."""
+    return _redact(call_record)
+
+
+def _redact(value):
+    if isinstance(value, dict):
+        return {
+            k: "[REDACTED]" if _SENSITIVE_KEY.search(k) and not isinstance(v, (dict, list))
+            else _redact(v)
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact(v) for v in value]
+    return value
 
 
 def constrained_decode(model, fields) -> dict:

@@ -7,6 +7,7 @@ the policy check has to hold on its own.
 
 from __future__ import annotations
 
+import math
 import re
 
 from agentlib.injection_lab import DOLLAR_RE, ORDER_ID_RE, obeys_directive, reference_sanitize
@@ -35,9 +36,14 @@ def check_refund_policy(order_id: str, amount: float, orders: dict) -> tuple[boo
     order = orders.get(order_id)
     if order is None:
         return False, f"No such order: {order_id}"
-    if amount <= 0:
+    # Fail closed: approve only what is provably a finite positive number. Every comparison
+    # with NaN is False, so a "reject if bad" chain lets NaN straight through.
+    is_number = isinstance(amount, (int, float)) and not isinstance(amount, bool)
+    if not is_number or not math.isfinite(amount):
+        return False, f"Refund amount must be a finite number; got {amount!r}."
+    if not amount > 0:
         return False, f"Refund amount must be positive; got ${amount:.2f}."
-    if amount > order["total"] + 0.01:
+    if not amount <= order["total"] + 0.01:
         return (
             False,
             f"REJECTED: requested ${amount:.2f} exceeds order {order_id}'s actual total "

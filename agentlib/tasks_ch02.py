@@ -355,4 +355,25 @@ def _k10(f):
     )
 
 
-task("ch02-leak-check", _ref_leak, [_k1, _k2, _k3, _k4, _k5, _k6, _k7, _k8, _k9, _k10])
+def _k11(f):
+    """an array whose elements are not dicts"""
+    for value in ["[1, 2]", "[null]", '["role content"]']:
+        try:
+            got = f(value)
+        except Exception as e:
+            raise AssertionError(
+                f"{value!r} raised {type(e).__name__}: {e}. An element has to be a dict "
+                "before `'role' in item` means anything -- on an int that line crashes, and "
+                "on a string it quietly does a substring match instead."
+            ) from None
+        assert got is False, (
+            f"{value!r} returned {got!r}. Check each element is a dict before looking for "
+            "keys in it: `'role' in \"role content\"` is a substring test, not a key test."
+        )
+
+
+task(
+    "ch02-leak-check",
+    _ref_leak,
+    [_k1, _k2, _k3, _k4, _k5, _k6, _k7, _k8, _k9, _k10, _k11],
+)

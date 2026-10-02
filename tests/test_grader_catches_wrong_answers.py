@@ -132,6 +132,75 @@ def test_ch03_mrr_rejects_zero_based_ranks():
     _rejects("ch03-mrr", wrong)
 
 
+def test_ch03_precision_k_rejects_counting_repeats():
+    """Plausible wrong answer: count hits with a comprehension over top_k, so a doc_id that
+    appears twice scores twice. Normal once documents are chunked."""
+
+    def wrong(retrieved_ids, relevant_ids, k):
+        top_k = retrieved_ids[:k]
+        if not top_k:
+            return 0.0
+        return sum(1 for d in top_k if d in relevant_ids) / len(top_k)
+
+    _rejects("ch03-precision-k", wrong)
+
+
+def test_ch03_recall_k_rejects_counting_repeats():
+    """Plausible wrong answer: the same comprehension for recall, which reports a relevant
+    document as found when only a different one came back twice."""
+
+    def wrong(retrieved_ids, relevant_ids, k):
+        if not relevant_ids:
+            return 0.0
+        return sum(1 for d in retrieved_ids[:k] if d in relevant_ids) / len(relevant_ids)
+
+    _rejects("ch03-recall-k", wrong)
+
+
+def test_ch03_chunk_overlap_rejects_unguarded_negative_overlap_and_redundant_tail():
+    """Plausible wrong answer: guard only overlap >= chunk_size, and loop `while start <
+    len(text)` with no early stop. Accepts overlap=-1 (dropping characters) and emits a final
+    chunk the previous one already contains."""
+
+    def wrong(text, chunk_size=400, overlap=0):
+        if overlap >= chunk_size:
+            raise ValueError("step must advance")
+        chunks, start = [], 0
+        while start < len(text):
+            chunks.append(text[start : start + chunk_size])
+            start += chunk_size - overlap
+        return chunks
+
+    _rejects("ch03-chunk-overlap", wrong)
+
+
+def test_ch03_bm25_rejects_crashing_on_an_empty_corpus():
+    """Plausible wrong answer: the reference formula with no empty-corpus guard, so the
+    average document length divides by zero."""
+    import math
+    from collections import Counter
+
+    from agentlib.retrieval_lab import tokenize
+
+    def wrong(query, docs, k1=1.5, b=0.75):
+        corpus = [tokenize(d["text"]) for d in docs]
+        n = len(corpus)
+        avg = sum(len(c) for c in corpus) / n
+        df = Counter(t for toks in corpus for t in set(toks))
+        out = {}
+        for doc, toks in zip(docs, corpus):
+            tf, score = Counter(toks), 0.0
+            for t in tokenize(query):
+                if t in tf:
+                    idf = math.log(1 + (n - df[t] + 0.5) / (df[t] + 0.5))
+                    norm = 1 - b + b * len(toks) / avg
+                    score += idf * tf[t] * (k1 + 1) / (tf[t] + k1 * norm)
+            out[doc["doc_id"]] = score
+        return out
+
+    _rejects("ch03-bm25", wrong)
+
+
 # --- Chapter 1 ---
 
 
@@ -340,6 +409,23 @@ def test_ch02_leak_check_rejects_substring_sniffing():
 
     def wrong(raw_result):
         return "role" in raw_result and "content" in raw_result
+
+    _rejects("ch02-leak-check", wrong)
+
+
+def test_ch02_leak_check_rejects_skipping_the_dict_check():
+    """Plausible wrong answer: parse the JSON, then test `"role" in item` without checking
+    each item is a dict. Passes every message-shaped input, crashes on `[1, 2]`, and calls
+    `["role content"]` a leak because `in` on a string is a substring match."""
+
+    def wrong(raw_result):
+        try:
+            data = json.loads(raw_result)
+        except ValueError:
+            return False
+        if not isinstance(data, list) or not data:
+            return False
+        return all("role" in item and "content" in item for item in data)
 
     _rejects("ch02-leak-check", wrong)
 
@@ -913,6 +999,50 @@ def test_ch04_harness_fingerprint_rejects_sorting_lists():
     _rejects("ch04-harness-fingerprint", wrong)
 
 
+def test_ch04_backoff_rejects_sleeping_before_giving_up():
+    """Plausible wrong answer: sleep after every failure, including the last one, then
+    raise. Every other behaviour is right; the final wait is pure added latency."""
+    import random
+
+    def wrong(fn, max_retries=6, base_delay=1.0, jitter=0.5, seed=1, sleep_fn=None,
+              retry_predicate=None):
+        rng = random.Random(seed)
+
+        def wrapped(*args, **kwargs):
+            log, last = [], None
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return fn(*args, **kwargs), log
+                except Exception as exc:
+                    last = exc
+                    if retry_predicate is not None and not retry_predicate(exc):
+                        raise
+                    delay = base_delay * 2 ** (attempt - 1) + rng.uniform(0, jitter)
+                    log.append({"attempt": attempt, "error": str(exc),
+                                "backoff_s": round(delay, 2)})
+                    if sleep_fn is not None:
+                        sleep_fn(delay)
+            raise RuntimeError("gave up") from last
+
+        return wrapped
+
+    _rejects("ch04-backoff", wrong)
+    _accepts("ch04-backoff")
+
+
+def test_ch04_fingerprint_rejects_trusting_json_dumps():
+    """Plausible wrong answer: json.dumps(sort_keys=True) and hash it. Passes every
+    key-order and TypeError case, but gives {1: "x"} and {"1": "x"} the same fingerprint."""
+    import hashlib
+
+    def wrong(manifest):
+        canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode()).hexdigest()[:12]
+
+    _rejects("ch04-harness-fingerprint", wrong)
+    _accepts("ch04-harness-fingerprint")
+
+
 # --- Chapter 5 ---
 
 
@@ -1174,6 +1304,22 @@ def test_ch06_authorize_caller_rejects_treating_unknown_callers_as_users():
     _rejects("ch06-authorize-caller", wrong)
 
 
+def test_ch06_policy_check_rejects_a_reject_if_bad_chain():
+    """Plausible wrong answer: refuse if <= 0, refuse if > total, else approve. Passes every
+    ordinary amount, and approves NaN because every comparison with NaN is False."""
+    def wrong(order_id, amount, orders):
+        order = orders.get(order_id)
+        if order is None:
+            return False, f"No such order: {order_id}"
+        if amount <= 0:
+            return False, "must be positive"
+        if amount > order["total"] + 0.01:
+            return False, f"over the real total of {order['total']}"
+        return True, f"ok, within the real total of {order['total']}"
+
+    _rejects("ch06-policy-check", wrong)
+
+
 # --- Chapter 7 ---
 
 
@@ -1334,6 +1480,78 @@ def test_ch07_log_sanitize_rejects_redacting_non_sensitive_fields():
         return result
 
     _rejects("ch07-log-sanitize", wrong)
+
+
+def test_ch07_failure_classifier_rejects_indexing_loc_blindly():
+    """Plausible wrong answer: the documented approach with no non-dict guard and an exact
+    name comparison. Crashes on a None response and calls scikit_learn the wrong package."""
+    from pydantic import ValidationError
+
+    def wrong(package_name, response, model):
+        try:
+            v = model.model_validate(response)
+        except ValidationError as exc:
+            errs = exc.errors()
+            if any(e["type"] == "missing" for e in errs):
+                return {"category": "version_mismatch", "action": "ask-user",
+                        "detail": str([e["loc"][0] for e in errs])}
+            return {"category": "malformed", "action": "switch",
+                    "detail": str([e["loc"][0] for e in errs])}
+        if v.name != package_name:
+            return {"category": "semantically_wrong", "action": "ask-user",
+                    "detail": f"got {v.name}"}
+        return {"category": "ok", "action": "proceed", "detail": v.name}
+
+    _rejects("ch07-failure-classifier", wrong)
+    _accepts("ch07-failure-classifier")
+
+
+def test_ch07_json_repair_rejects_first_to_last_brace():
+    """Plausible wrong answer: strip fences, slice first '{' to last '}'. Handles a brace
+    inside a string value, and fails when the prose after the object has its own braces."""
+
+    def wrong(raw):
+        text = raw.strip()
+        if "```" in text:
+            body = text[text.find("```") + 3 :]
+            if body.lstrip().startswith("json"):
+                body = body.lstrip()[4:]
+            end = body.find("```")
+            text = (body if end == -1 else body[:end]).strip()
+        first, last = text.find("{"), text.rfind("}")
+        if first == -1 or last < first:
+            return None
+        try:
+            parsed = json.loads(text[first : last + 1])
+        except ValueError:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+
+    _rejects("ch07-json-repair", wrong)
+    _accepts("ch07-json-repair")
+
+
+def test_ch07_log_sanitize_rejects_recursing_into_dicts_only():
+    """Plausible wrong answer: exactly what the old spec said -- recurse into nested dicts.
+    A list of header dicts goes straight through with its token, and is shared with the
+    caller."""
+    import re as _re
+
+    pat = _re.compile(r"key|token|secret|password|auth", _re.I)
+
+    def wrong(record):
+        out = {}
+        for k, v in record.items():
+            if isinstance(v, dict):
+                out[k] = wrong(v)
+            elif pat.search(k):
+                out[k] = "[REDACTED]"
+            else:
+                out[k] = v
+        return out
+
+    _rejects("ch07-log-sanitize", wrong)
+    _accepts("ch07-log-sanitize")
 
 
 # --- Chapter 8 ---
@@ -1543,6 +1761,16 @@ def test_ch09_drift_detect_rejects_alerting_on_any_change():
 
     _rejects("ch09-drift-detect", wrong)
     _accepts("ch09-drift-detect")
+
+
+def test_ch09_drift_detect_rejects_unrounded_float_comparison():
+    """Plausible wrong answer: abs(canary - stable) < threshold. Correct maths, and wrong for
+    (0.10, 0.15) because the subtraction lands just under 0.05."""
+
+    def wrong(stable_rate, canary_rate, threshold=0.05):
+        return abs(canary_rate - stable_rate) < threshold
+
+    _rejects("ch09-drift-detect", wrong)
 
 
 def test_ch09_drift_detect_rejects_the_uncalibrated_default():

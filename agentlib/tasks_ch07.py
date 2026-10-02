@@ -296,10 +296,36 @@ def _f9(f):
     )
 
 
+def _f10(f):
+    """a response that is not an object at all"""
+    for raw in (None, "Service Unavailable", [1, 2]):
+        try:
+            got = f("numpy", raw, PackageInfo)
+        except Exception as e:
+            raise AssertionError(
+                f"response={raw!r} raised {type(e).__name__}: {e}. Its validation error "
+                "has no field location to index into. Check the response is a dict first; "
+                "anything else is malformed."
+            ) from None
+        assert got["category"] == "malformed", (
+            f"response={raw!r} isn't a JSON object at all -- that's malformed; got {got!r}"
+        )
+
+
+def _f11(f):
+    """package names compare the way PyPI compares them"""
+    got = f("scikit-learn", dict(_REAL, name="scikit_learn"), PackageInfo)
+    assert got["category"] == "ok", (
+        "PyPI treats scikit-learn, scikit_learn and Scikit.Learn as one package (PEP 503: "
+        "lowercase, and runs of -, _ and . are equivalent). Flagging this as "
+        f"semantically_wrong sends a user an ask-user for a correct answer. Got {got!r}"
+    )
+
+
 task(
     "ch07-failure-classifier",
     _ref_classifier,
-    [_f1, _f2, _f3, _f4, _f5, _f6, _f7, _f8, _f9],
+    [_f1, _f2, _f3, _f4, _f5, _f6, _f7, _f8, _f9, _f10, _f11],
 )
 
 
@@ -384,7 +410,26 @@ def _r8(f):
     )
 
 
-task("ch07-json-repair", _ref_repair, [_r1, _r2, _r3, _r4, _r5, _r6, _r7, _r8])
+def _r9(f):
+    """prose around the object contains braces of its own"""
+    for raw in (
+        '{"name": "numpy"}\nNote: {} means an empty dict.',
+        'Use {} for an empty dict. Here is the record: {"name": "numpy"}',
+    ):
+        got = f(raw)
+        assert got == {"name": "numpy"}, (
+            f"{raw!r} returned {got!r}. Slicing from the first '{{' to the last '}}' takes "
+            "in the prose's braces too. Let the parser decide where an object ends: "
+            "json.JSONDecoder().raw_decode(text, i) parses one value starting at index i and "
+            "ignores what follows. An empty {} isn't a record, so keep looking past it."
+        )
+
+
+task(
+    "ch07-json-repair",
+    _ref_repair,
+    [_r1, _r2, _r3, _r4, _r5, _r6, _r7, _r8, _r9],
+)
 
 
 # --- ch07-retry-budget ---
@@ -635,4 +680,19 @@ def _l6(f):
         )
 
 
-task("ch07-log-sanitize", _ref_sanitize, [_l1, _l2, _l3, _l4, _l5, _l6])
+def _l7(f):
+    """dicts inside lists are sanitized too"""
+    record = {"headers": [{"Authorization": "Bearer abc"}, {"Accept": "json"}]}
+    got = f(record)
+    assert got["headers"][0]["Authorization"] == "[REDACTED]", (
+        "headers very often arrive as a list of dicts. Recursing only into dicts leaves this "
+        f"bearer token in the log: got {got['headers']!r}. Recurse into lists as well."
+    )
+    assert got["headers"][1] == {"Accept": "json"}, "non-sensitive entries survive"
+    assert record["headers"][0]["Authorization"] == "Bearer abc", (
+        "the caller's record was changed: the returned dict shares the list with the "
+        "original, so redacting it redacted theirs. Build new lists as well as new dicts."
+    )
+
+
+task("ch07-log-sanitize", _ref_sanitize, [_l1, _l2, _l3, _l4, _l5, _l6, _l7])
